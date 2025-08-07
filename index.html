@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DPDOC - Talentos (Popup Login)</title>
+  <title>DPDOC - Talentos (Popup Corrigido)</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     body {
@@ -52,89 +51,79 @@
 
     const App = () => {
       const [account, setAccount] = useState(null);
-      const [isLoggedIn, setIsLoggedIn] = useState(false);
       const [loading, setLoading] = useState(true);
 
       useEffect(() => {
-        const checkAuthentication = async () => {
+        const authenticate = async () => {
           try {
-            const currentAccounts = msalInstance.getAllAccounts();
-            if (currentAccounts.length > 0) {
-              const user = currentAccounts[0];
-              if (user.username.endsWith("@talentosconsultoria.com.br")) {
-                setAccount(user);
-                setIsLoggedIn(true);
-              } else {
-                await msalInstance.logoutPopup();
-              }
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+              const user = accounts[0];
+              setAccount(user);
+              setLoading(false);
             } else {
               const loginResponse = await msalInstance.loginPopup({
-                scopes: ["User.Read"],
+                scopes: ["User.Read"]
               });
-              if (loginResponse.account.username.endsWith("@talentosconsultoria.com.br")) {
-                setAccount(loginResponse.account);
-                setIsLoggedIn(true);
-              } else {
-                await msalInstance.logoutPopup();
-              }
+              setAccount(loginResponse.account);
+              setLoading(false);
             }
-          } catch (err) {
-            console.error("Erro MSAL Popup:", err);
-          } finally {
+          } catch (error) {
+            console.error("Erro MSAL:", error);
             setLoading(false);
           }
         };
-
-        checkAuthentication();
+        authenticate();
       }, []);
 
-      const handleLogout = () => {
-        msalInstance.logoutPopup().then(() => {
+      const handleLogout = async () => {
+        try {
+          await msalInstance.logoutPopup();
           setAccount(null);
-          setIsLoggedIn(false);
-        });
+          window.location.reload();
+        } catch (error) {
+          console.error("Erro ao sair:", error);
+        }
       };
 
       if (loading) {
         return (
-          <div className="min-h-screen flex items-center justify-center p-4 font-['Inter']">
-            <div className="text-xl font-bold text-gray-600">
-              Verificando autenticação...
-            </div>
+          <div className="min-h-screen flex items-center justify-center font-['Inter']">
+            <p className="text-xl text-gray-600">Verificando autenticação...</p>
           </div>
         );
       }
 
-      if (!isLoggedIn) return null;
+      if (!account) {
+        return (
+          <div className="min-h-screen flex items-center justify-center font-['Inter']">
+            <p className="text-red-600 font-bold text-xl">Erro de autenticação. Tente novamente.</p>
+          </div>
+        );
+      }
 
       return (
-        <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8 font-['Inter']">
+        <div className="min-h-screen flex flex-col items-center p-6 font-['Inter']">
           <div className="w-full bg-white p-6 rounded-b-2xl shadow-md border-b border-gray-100 text-center">
             <h1 className="text-4xl font-extrabold text-blue-700 animate-fade-in-down">
               DPDOC - Talentos Consultoria
             </h1>
-            <p className="text-lg text-gray-700 mt-2">
-              Conteúdo exclusivo para usuários autenticados.
-            </p>
+            <p className="text-lg text-gray-700 mt-2">Acesso autenticado com sucesso.</p>
             <div className="mt-4">
               <span className="text-gray-600">Bem-vindo, </span>
               <span className="font-bold text-blue-600">{account?.name}</span>
               <button
                 onClick={handleLogout}
-                className="ml-4 py-2 px-4 border-transparent rounded-lg shadow-md text-sm font-bold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-300 ease-in-out"
+                className="ml-4 py-2 px-4 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition"
               >
                 Sair
               </button>
             </div>
           </div>
-
           <div className="w-full max-w-4xl mt-8 bg-white p-8 rounded-2xl shadow-xl border border-gray-100 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Seu Conteúdo Protegido</h2>
             <p className="text-gray-600">
-              Esta página agora usa autenticação com popup via Azure AD.
-            </p>
-            <p className="text-gray-600 mt-4">
-              Apenas usuários do domínio talentosconsultoria.com.br terão acesso autorizado.
+              Você está autenticado com uma conta do domínio talentosconsultoria.com.br.
             </p>
           </div>
         </div>
