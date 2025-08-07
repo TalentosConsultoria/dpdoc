@@ -62,10 +62,10 @@
               setAccount(user);
               setLoading(false);
             } else {
-              const loginResponse = await msalInstance.loginPopup({
-                scopes: ["User.Read"]
-              });
-              setAccount(loginResponse.account);
+              const loginResponse await msalInstance.loginRedirect({
+  scopes: ["User.Read"],
+  redirectUri: "https://dpdoc.talentosconsultoria.com.br/home.html"});
+setAccount(loginResponse.account);
               setLoading(false);
             }
           } catch (error) {
