@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login - Talentos Consultoria</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPDOC - Talentos Consultoria</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
   <script src="https://alcdn.msauth.net/browser/2.34.0/js/msal-browser.js"></script>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center min-h-screen">
-  <div class="text-center font-sans">
-    <h1 class="text-3xl font-bold text-blue-700 mb-4">Acessando Talentos Consultoria...</h1>
-    <p class="text-lg text-gray-600 mb-4">Aguarde, estamos verificando sua conta.</p>
-    <div id="status" class="text-sm text-gray-500">Iniciando login...</div>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100">
+  <div id="root" class="min-h-screen flex items-center justify-center font-sans text-center text-lg text-gray-600">
+    Verificando autenticação...
   </div>
 
   <script>
@@ -28,17 +32,36 @@
     window.onload = async () => {
       try {
         const response = await msalInstance.handleRedirectPromise();
-        if (!response) {
-          document.getElementById("status").innerText = "Redirecionando para o login do Microsoft...";
-          msalInstance.loginRedirect({
-            scopes: ["User.Read"]
-          });
+        const accounts = msalInstance.getAllAccounts();
+
+        if (response && response.account) {
+          renderPage(response.account);
+        } else if (accounts.length > 0) {
+          renderPage(accounts[0]);
+        } else {
+          document.getElementById('root').innerHTML = '<p class="text-red-600 font-bold">Autenticação não reconhecida.</p>';
         }
       } catch (error) {
-        console.error("Erro MSAL:", error);
-        document.getElementById("status").innerText = "Erro ao autenticar. Tente novamente.";
+        console.error("Erro ao processar autenticação:", error);
+        document.getElementById('root').innerHTML = '<p class="text-red-600 font-bold">Erro durante a autenticação.</p>';
       }
     };
+
+    function renderPage(account) {
+      const name = account.name || account.username;
+      document.getElementById("root").innerHTML = `
+        <div class="w-full max-w-2xl bg-white p-10 rounded-xl shadow-lg border text-center">
+          <h1 class="text-4xl font-extrabold text-blue-700 mb-4">DPDOC - Talentos Consultoria</h1>
+          <p class="text-gray-700 mb-4">Seja bem-vindo, <span class="text-blue-600 font-bold">${name}</span></p>
+          <p class="text-gray-600 mb-2">Você está autenticado com sucesso.</p>
+          <button onclick="logout()" class="mt-6 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Sair</button>
+        </div>
+      `;
+    }
+
+    function logout() {
+      msalInstance.logoutRedirect();
+    }
   </script>
 </body>
 </html>
