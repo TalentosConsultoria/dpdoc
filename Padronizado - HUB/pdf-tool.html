@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juntar, Reorganizar, Excluir e Baixar Páginas de PDFs</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            padding-bottom: 120px;
+        }
+        .container { max-width: 900px; margin: auto; }
+        #dropzone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #thumbnails-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            min-height: 100px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .page-thumbnail {
+            width: 180px;
+            height: 240px;
+            border: 1px solid #aaa;
+            cursor: move;
+            position: relative;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .page-thumbnail canvas {
+            max-width: 100%;
+            height: 85%;
+        }
+        .page-thumbnail .delete-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding-bottom: 2px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .page-thumbnail .delete-button:hover {
+            opacity: 1;
+        }
+        .page-thumbnail span {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .preview-icon {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 123, 255, 0.8);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .preview-icon:hover {
+            opacity: 1;
+        }
+        /* ESTILOS DA BARRA DE DOWNLOAD REVISADOS */
+        #fixed-download-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 15px 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .download-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .download-controls label {
+            white-space: nowrap;
+            min-width: 180px; /* Mantém a largura mínima para alinhar os campos */
+        }
+        .download-controls input {
+            padding: 8px;
+            width: 25%; /* Largura de 25% conforme solicitado */
+            min-width: 150px; /* Garante que não fique muito pequeno em telas menores */
+            max-width: 250px; /* Previne que fique muito grande em telas largas */
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .button-group button {
+            padding: 10px 20px;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+        /* ESTILOS DO MODAL DE VISUALIZAÇÃO */
+        #preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        #preview-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border: 1px solid #888;
+            max-width: 90%;
+            position: relative;
+        }
+        #preview-canvas {
+            width: 100%;
+            height: auto;
+        }
+        #close-preview {
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 5px 10px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1002;
+        }
+        #close-preview:hover,
+        #close-preview:focus {
+            background-color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        /* ESTILO DO BOTÃO HOME */
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="home-button">← Voltar para a Home</a>
+    <div class="container">
+        <h1>Juntar, Reorganizar e Excluir Páginas de PDFs</h1>
+        <div id="dropzone">
+            Arraste e solte seus arquivos PDF aqui, ou clique para selecioná-los.
+            <input type="file" id="pdfFiles" multiple accept=".pdf" style="display: none;">
+        </div>
+        <div id="thumbnails-container">
+            <p id="placeholder">As miniaturas das páginas aparecerão aqui.</p>
+        </div>
+    </div>
+
+    <div id="fixed-download-bar">
+        <div class="download-controls">
+            <label for="output-filename">Nome do arquivo:</label>
+            <input type="text" id="output-filename" placeholder="meu-documento.pdf" value="pdfs_juntos_e_editados.pdf">
+        </div>
+        <div class="download-controls">
+            <label for="page-range">Intervalo de páginas (ex: 1-3, 5, 8-10):</label>
+            <input type="text" id="page-range" placeholder="1-3, 5, 8">
+        </div>
+        <div class="button-group">
+            <button onclick="baixarIntervaloDePaginas()">Baixar Páginas Selecionadas</button>
+            <button onclick="juntarPdfs()">Juntar Todos os PDFs</button>
+        </div>
+    </div>
+
+    <div id="preview-modal">
+        <div id="preview-content">
+            <span id="close-preview">&times;</span>
+            <canvas id="preview-canvas"></canvas>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const { PDFDocument } = PDFLib;
+        const thumbnailsContainer = document.getElementById('thumbnails-container');
+        const fileInput = document.getElementById('pdfFiles');
+        const dropzone = document.getElementById('dropzone');
+        const outputFilenameInput = document.getElementById('output-filename');
+        const pageRangeInput = document.getElementById('page-range');
+        const previewModal = document.getElementById('preview-modal');
+        const previewCanvas = document.getElementById('preview-canvas');
+        const closePreviewButton = document.getElementById('close-preview');
+        closePreviewButton.onclick = () => {
+            previewModal.style.display = "none";
+        };
+        window.onclick = (event) => {
+            if (event.target == previewModal) {
+                previewModal.style.display = "none";
+            }
+        };
+        dropzone.onclick = () => fileInput.click();
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.backgroundColor = '#f0f0f0'; });
+        dropzone.addEventListener('dragleave', () => { dropzone.style.backgroundColor = 'transparent'; });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.backgroundColor = 'transparent';
+            carregarArquivos(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => {
+            carregarArquivos(e.target.files);
+            e.target.value = null;
+        });
+
+        function atualizarNumeracaoMiniaturas() {
+            const thumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+            for (let i = 0; i < thumbnails.length; i++) {
+                const span = thumbnails[i].querySelector('span');
+                if (span) {
+                    span.textContent = `Página ${i + 1}`;
+                }
+            }
+        }
+
+        async function carregarArquivos(files) {
+            document.getElementById('placeholder').style.display = 'none';
+            for (const file of files) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    for (let i = 1; i <= pdfDocument.numPages; i++) {
+                        const page = await pdfDocument.getPage(i);
+                        const viewport = page.getViewport({ scale: 0.5 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        const thumbnailDiv = document.createElement('div');
+                        thumbnailDiv.className = 'page-thumbnail';
+                        thumbnailDiv.appendChild(canvas);
+                        const pageNumberSpan = document.createElement('span');
+                        pageNumberSpan.textContent = `Página ${thumbnailsContainer.children.length + 1}`;
+                        thumbnailDiv.appendChild(pageNumberSpan);
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'delete-button';
+                        deleteButton.textContent = 'x';
+                        deleteButton.onclick = (e) => {
+                            e.stopPropagation();
+                            thumbnailDiv.remove();
+                            atualizarNumeracaoMiniaturas();
+                        };
+                        thumbnailDiv.appendChild(deleteButton);
+                        const previewIcon = document.createElement('button');
+                        previewIcon.className = 'preview-icon';
+                        previewIcon.innerHTML = '&#128065;';
+                        previewIcon.onclick = async (e) => {
+                            e.stopPropagation();
+                            await mostrarVisualizacao(file, i);
+                        };
+                        thumbnailDiv.appendChild(previewIcon);
+                        thumbnailDiv.pdfData = {
+                            file: file,
+                            pageIndex: i - 1,
+                            originalPageNumber: i
+                        };
+                        thumbnailsContainer.appendChild(thumbnailDiv);
+                    }
+                } catch (e) {
+                    console.error(`Erro ao carregar o arquivo ${file.name}:`, e);
+                }
+            }
+            new Sortable(thumbnailsContainer, {
+                animation: 150,
+                ghostClass: 'blue-background-class',
+                onUpdate: () => atualizarNumeracaoMiniaturas()
+            });
+            atualizarNumeracaoMiniaturas();
+        }
+
+        async function mostrarVisualizacao(file, pageNumber) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const page = await pdfDocument.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 1.3 });
+            const context = previewCanvas.getContext('2d');
+            previewCanvas.height = viewport.height;
+            previewCanvas.width = viewport.width;
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            previewModal.style.display = "flex";
+        }
+
+        function parsePageRange(rangeString) {
+            const selectedPages = new Set();
+            const parts = rangeString.split(',').map(s => s.trim());
+            for (const part of parts) {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    if (start > 0 && end >= start) {
+                        for (let i = start; i <= end; i++) {
+                            selectedPages.add(i);
+                        }
+                    }
+                } else {
+                    const page = Number(part);
+                    if (page > 0) {
+                        selectedPages.add(page);
+                    }
+                }
+            }
+            return Array.from(selectedPages).sort((a, b) => a - b);
+        }
+
+        async function baixarIntervaloDePaginas() {
+            try {
+                const rangeString = pageRangeInput.value;
+                if (!rangeString) {
+                    alert("Por favor, insira o intervalo de páginas que deseja baixar.");
+                    return;
+                }
+                const pagesToDownload = parsePageRange(rangeString);
+                if (pagesToDownload.length === 0) {
+                    alert("Formato de intervalo de páginas inválido. Exemplo: '1-3, 5, 8'.");
+                    return;
+                }
+                const reorderedThumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+                const pdfDestino = await PDFDocument.create();
+                const sourcePdfs = new Map();
+                for (const thumbnail of reorderedThumbnails) {
+                    const { file, pageIndex } = thumbnail.pdfData;
+                    const currentPageNumber = parseInt(thumbnail.querySelector('span').textContent.match(/\d+/)[0]);
+                    if (pagesToDownload.includes(currentPageNumber)) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        let pdfOrigem;
+                        if (!sourcePdfs.has(file)) {
+                            pdfOrigem = await PDFDocument.load(arrayBuffer);
+                            sourcePdfs.set(file, pdfOrigem);
+                        } else {
+                            pdfOrigem = sourcePdfs.get(file);
+                        }
+                        const [paginaCopiada] = await pdfDestino.copyPages(pdfOrigem, [pageIndex]);
+                        pdfDestino.addPage(paginaCopiada);
+                    }
+                }
+                if (pdfDestino.getPages().length === 0) {
+                    alert("Nenhuma página encontrada para o intervalo selecionado.");
+                    return;
+                }
+                const bytesDoPdf = await pdfDestino.save();
+                triggerDownload(bytesDoPdf, outputFilenameInput.value);
+            } catch (e) {
+                console.error("Erro na função baixarIntervaloDePaginas():", e);
+                alert("Ocorreu um erro ao baixar as páginas. Verifique o console para mais detalhes.");
+            }
+        }
+
+        async function juntarPdfs() {
+            try {
+                const reorderedThumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+                if (reorderedThumbnails.length < 1) {
+                    alert("Nenhum PDF para juntar. Por favor, arraste e solte ou selecione arquivos.");
+                    return;
+                }
+                const pdfDestino = await PDFDocument.create();
+                const sourcePdfs = new Map();
+                for (const thumbnail of reorderedThumbnails) {
+                    const { file, pageIndex } = thumbnail.pdfData;
+                    const arrayBuffer = await file.arrayBuffer();
+                    let pdfOrigem;
+                    if (!sourcePdfs.has(file)) {
+                        pdfOrigem = await PDFDocument.load(arrayBuffer);
+                        sourcePdfs.set(file, pdfOrigem);
+                    } else {
+                        pdfOrigem = sourcePdfs.get(file);
+                    }
+                    const [paginaCopiada] = await pdfDestino.copyPages(pdfOrigem, [pageIndex]);
+                    pdfDestino.addPage(paginaCopiada);
+                }
+                const bytesDoPdf = await pdfDestino.save();
+                triggerDownload(bytesDoPdf, outputFilenameInput.value);
+            } catch (e) {
+                console.error("Erro na função juntarPdfs():", e);
+                alert("Ocorreu um erro ao juntar os PDFs. Verifique o console para mais detalhes.");
+            }
+        }
+
+        function triggerDownload(bytes, filename) {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename || 'documento.pdf';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramenta de Processamento de Planilhas</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ESTILOS PADRONIZADOS DO PROJETO */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1, h2, h3 {
+            color: #212529;
+            font-weight: 700;
+        }
+
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+        
+        /* ESTILOS ESPECÍFICOS DA PÁGINA */
+        .container.bancodoc {
+            max-width: 900px;
+            text-align: left;
+        }
+        .file-upload {
+            margin: 15px 0;
+        }
+        .file-upload label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .file-upload input[type="file"] {
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+        }
+        .process-button, .download-button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        .process-button {
+            background-color: #28a745;
+        }
+        .process-button:hover {
+            background-color: #218838;
+        }
+        .download-button {
+            background-color: #007bff;
+            display: none; /* Escondido por padrão */
+        }
+        .download-button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .instructions {
+            margin-bottom: 20px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <a href="index.html" class="home-button">← Voltar para a Home</a>
+
+    <div class="container bancodoc">
+        <h1>Ferramenta de Processamento de Planilhas</h1>
+        <p class="instructions">Esta ferramenta processa a planilha com base no CPF para adicionar a data de admissão e o tipo de vínculo.</p>
+        
+        <h2>Passo 1: Enviar Planilha de Dados</h2>
+        <p>Envie a planilha de dados da empresa, que contém as informações de vínculo e admissão.</p>
+        <div class="file-upload">
+            <label for="file-input-1">Arquivo de Dados:</label>
+            <input type="file" id="file-input-1" accept=".xlsx, .xls">
+        </div>
+        <button class="process-button" id="process-button-1">Carregar Dados</button>
+        <div id="status-1" class="status"></div>
+
+        <h2>Passo 2: Enviar Planilha para Formatar</h2>
+        <p>Envie a planilha que precisa ser formatada. O script procurará pelos CPFs nesta planilha e adicionará os dados do Passo 1.</p>
+        <div class="file-upload">
+            <label for="file-input-2">Arquivo para Formatar:</label>
+            <input type="file" id="file-input-2" accept=".xlsx, .xls">
+        </div>
+        <button class="process-button" id="process-button-2">Processar e Formatar</button>
+        <div id="status-2" class="status"></div>
+        <button class="download-button" id="download-button-2">Baixar Planilha Final</button>
+
+    </div>
+
+    <script>
+        const fileInput1 = document.getElementById('file-input-1');
+        const processBtn1 = document.getElementById('process-button-1');
+        const status1Div = document.getElementById('status-1');
+        const fileInput2 = document.getElementById('file-input-2');
+        const processBtn2 = document.getElementById('process-button-2');
+        const status2Div = document.getElementById('status-2');
+        const downloadBtn2 = document.getElementById('download-button-2');
+
+        let dataPlanilha1 = null;
+        let processedData2 = null;
+
+        function normalizeCPF(cpf) {
+            return String(cpf).replace(/\D/g, '').padStart(11, '0');
+        }
+
+        function formatCPF(cpf) {
+            cpf = normalizeCPF(cpf);
+            if (cpf.length === 11) {
+                return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+            }
+            return cpf;
+        }
+
+        processBtn1.addEventListener('click', () => {
+            const file = fileInput1.files[0];
+            if (!file) {
+                status1Div.textContent = 'Por favor, selecione um arquivo de dados.';
+                return;
+            }
+
+            status1Div.textContent = 'Carregando...';
+            processBtn1.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    dataPlanilha1 = {};
+                    json.forEach(row => {
+                        const cpf = normalizeCPF(row[15]); // Coluna 16 (índice 15) para CPF
+                        if (cpf && row[6] && row[7]) { // Coluna 7 (índice 6) para Vínculo e Coluna 8 (índice 7) para Admissão
+                            dataPlanilha1[cpf] = {
+                                vinculo: row[6],
+                                admissao: row[7],
+                                cpfOriginal: row[15]
+                            };
+                        }
+                    });
+
+                    status1Div.textContent = `Dados de ${Object.keys(dataPlanilha1).length} CPFs carregados com sucesso!`;
+                } catch (error) {
+                    status1Div.textContent = `Erro ao carregar o arquivo: ${error.message}`;
+                    console.error("ERRO AO CARREGAR ARQUIVO 1:", error);
+                } finally {
+                    processBtn1.disabled = false;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        processBtn2.addEventListener('click', async () => {
+            if (!dataPlanilha1) {
+                status2Div.textContent = 'Por favor, carregue a planilha de dados no Passo 1 primeiro.';
+                return;
+            }
+
+            const file = fileInput2.files[0];
+            if (!file) {
+                status2Div.textContent = 'Por favor, selecione a planilha para formatar.';
+                return;
+            }
+
+            status2Div.textContent = 'Processando...';
+            processBtn2.disabled = true;
+            downloadBtn2.style.display = 'none';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // Define o novo cabeçalho se ainda não existir
+                if (json.length > 0 && json[0].length < 5) {
+                    json[0][0] = 'NOME';
+                    json[0][1] = 'CPF';
+                    json[0][2] = 'VINCULO';
+                    json[0][3] = 'ADMISSAO';
+                    json[0][4] = 'PIS';
+                }
+
+                processedData2 = json.map(row => {
+                    const cpf = normalizeCPF(row[1]); // Coluna 2 (índice 1) para CPF na planilha a ser formatada
+                    if (cpf in dataPlanilha1) {
+                        const dadosEncontrados = dataPlanilha1[cpf];
+                        row[2] = dadosEncontrados.vinculo;     // Preenche Coluna C
+                        row[3] = dadosEncontrados.admissao;     // Preenche Coluna D
+                    }
+                    return row;
+                });
+
+                status2Div.textContent = 'Processamento do Passo 2 concluído!';
+                downloadBtn2.style.display = 'block';
+
+            } catch (error) {
+                status2Div.textContent = `Erro: ${error.message}. Por favor, verifique se os arquivos e as colunas estão corretos.`;
+                console.error("ERRO DURANTE O PROCESSAMENTO:", error);
+            } finally {
+                processBtn2.disabled = false;
+            }
+        });
+
+        downloadBtn2.addEventListener('click', () => {
+            if (processedData2) {
+                const dataToDownload = processedData2.map((row, index) => {
+                    if (index === 0) return row;
+                    const newRow = [...row];
+                    newRow[1] = formatCPF(normalizeCPF(row[1])); // Formata o CPF na coluna 2 (índice 1)
+                    return newRow;
+                });
+                const ws = XLSX.utils.aoa_to_sheet(dataToDownload);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Planilha Final");
+                XLSX.writeFile(wb, "planilha_final.xlsx");
+            }
+        });
+
+    </script>
+</body>
+</html>
