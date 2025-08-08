@@ -4,71 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu Principal</title>
-
+    <!-- Incluindo Tailwind CSS para um design responsivo e moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração para usar a fonte Inter e cores personalizadas da logo -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad', /* Cor azul escura da logo */
+                        secondary: '#196dff', /* Cor azul mais clara da logo */
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            background-color: #f0f2f5;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            width: 90%;
-            max-width: 600px;
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #212529;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 18px;
-            line-height: 1.6;
-            margin-bottom: 40px;
-        }
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        .button {
-            display: inline-block;
-            padding: 15px 30px;
-            text-decoration: none;
-            color: #fff;
-            background-color: #007bff;
-            border-radius: 5px;
-            font-size: 18px;
-            font-weight: 500;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <h1>Menu Principal</h1>
-        <p>Escolha a ferramenta que deseja utilizar:</p>
+<!-- Adicionando um fundo com gradiente linear para um visual mais dinâmico -->
+<body class="flex justify-center items-center min-h-screen p-4 font-sans" style="background-image: linear-gradient(to top, #e6e9f0 0%, #e2ebf0 100%);">
+
+    <!-- Container principal com card flutuante e sombra -->
+    <div class="bg-white p-8 md:p-12 rounded-2xl shadow-xl w-full max-w-md text-center transform transition-transform duration-300 hover:scale-105">
+        <!-- Adicionando a nova logo no topo do card -->
+        <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="" class="h-24 w-24 mx-auto mb-6 rounded-full shadow-md">
         
-        <div class="button-group">
-            <a href="qlp-format.html" class="button">Formatar QLP</a>
-            <a href="pdf-tool.html" class="button">Ferramenta PDF</a>
-            <a href="format-bancodoc.html" class="button">Processar Planilha Bancodoc</a>
+        <h1 class="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Menu Principal</h1>
+        <p class="text-md md:text-lg text-gray-600 mb-8">Escolha a ferramenta que deseja utilizar:</p>
+
+        <!-- Grupo de botões com espaçamento e estilo moderno -->
+        <div class="flex flex-col gap-5">
+            <a href="qlp-format.html" class="w-full bg-primary hover:bg-secondary text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                Formatar QLP
+            </a>
+            <a href="pdf-tool.html" class="w-full bg-primary hover:bg-secondary text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                Ferramenta PDF
+            </a>
+            <a href="format-bancodoc.html" class="w-full bg-primary hover:bg-secondary text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                Processar Planilha Bancodoc
+            </a>
         </div>
     </div>
 </body>
