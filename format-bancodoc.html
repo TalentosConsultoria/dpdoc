@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Corrigir CPFs com Base em Relatório</title>
+  <title>Unificação de planilhas: QLP - Bancodoc</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
@@ -19,9 +19,39 @@
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    input[type="file"] {
+    /* Estilo para a área de importação */
+    .file-drop-area {
+      border: 2px dashed #ccc;
+      border-radius: 5px;
+      padding: 20px;
+      text-align: center;
+      transition: border-color 0.3s ease;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .file-drop-area:hover {
+      border-color: #007BFF;
+    }
+    .file-drop-area input[type="file"] {
+      display: none; /* Esconde o input de arquivo padrão */
+    }
+    .file-drop-area label {
+      display: block; /* Garante que o label ocupe toda a área */
+      cursor: pointer;
+      color: #666;
+    }
+    .file-drop-area label strong {
+        display: block;
+        font-size: 1.1em;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    .file-drop-area label span {
+      font-weight: normal;
+      color: #333;
       display: block;
-      margin: 10px 0;
+      margin-top: 5px;
+      font-style: italic;
     }
     button {
       background-color: #007BFF;
@@ -51,7 +81,7 @@
         text-decoration: none;
         padding: 10px 15px;
         border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
         font-weight: bold;
         transition: background-color 0.3s;
     }
@@ -63,33 +93,70 @@
 <body>
   <a href="index.html" class="back-button">← Voltar para o Menu</a>
   <div class="container">
-    <h1>Corrigir CPFs com Base em Relatório</h1>
+    <h1>Unificação de planilhas: QLP - Bancodoc</h1>
     <p>Envie abaixo as três planilhas:</p>
-    <label>1. Documentos não Depositados de Admissão:</label>
-    <input type="file" id="admissaoFile" accept=".xlsx,.csv" />
-    <br><br>
-    <label>2. Relatório de Empregados:</label>
-    <input type="file" id="relatorioFile" accept=".xlsx,.csv" />
-    <br><br>
-    <label>3. QLP geral:</label>
-    <input type="file" id="cadastroFile" accept=".xlsx,.csv" />
+    
+    <!-- Área de importação 1 -->
+    <div class="file-drop-area">
+      <label for="admissaoFile">
+        <strong>Documentos não Depositados de Admissão</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="admissaoFileName"></span>
+      </label>
+      <input type="file" id="admissaoFile" accept=".xlsx,.csv" />
+    </div>
+    
+    <!-- Área de importação 2 -->
+    <div class="file-drop-area">
+      <label for="relatorioFile">
+        <strong>Relatório de Empregados</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="relatorioFileName"></span>
+      </label>
+      <input type="file" id="relatorioFile" accept=".xlsx,.csv" />
+    </div>
+    
+    <!-- Área de importação 3 -->
+    <div class="file-drop-area">
+      <label for="cadastroFile">
+        <strong>QLP geral</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="cadastroFileName"></span>
+      </label>
+      <input type="file" id="cadastroFile" accept=".xlsx,.csv" />
+    </div>
+
     <br><br>
     <button onclick="processarArquivos()">Corrigir e Baixar Planilha</button>
     <pre id="relatorioOutput"></pre>
   </div>
 
   <script>
+    // Adiciona event listeners para atualizar o nome do arquivo
+    document.getElementById('admissaoFile').addEventListener('change', function(e) {
+      document.getElementById('admissaoFileName').textContent = e.target.files[0].name;
+    });
+    document.getElementById('relatorioFile').addEventListener('change', function(e) {
+      document.getElementById('relatorioFileName').textContent = e.target.files[0].name;
+    });
+    document.getElementById('cadastroFile').addEventListener('change', function(e) {
+      document.getElementById('cadastroFileName').textContent = e.target.files[0].name;
+    });
+
+    // Função para normalizar texto, removendo acentos e espaços extras
     function normalizarTexto(texto) {
       if (typeof texto !== 'string') return '';
       return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
     }
 
+    // Função para normalizar CPF, removendo caracteres não numéricos e preenchendo com zeros
     function normalizarCPF(cpf) {
         if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
         let numeros = String(cpf).replace(/\D/g, '');
         return numeros.padStart(11, '0');
     }
     
+    // Função para converter data do formato Excel para o formato de data JavaScript
     function excelDateToJSDate(serial) {
       if (typeof serial !== 'number' || serial <= 0) return serial;
 
@@ -109,6 +176,7 @@
       return `${day}/${month}/${year}`;
     }
 
+    // Função para formatar o CPF com pontos e hífen
     function formatarCPF(cpf) {
       const numeros = String(cpf).replace(/\D/g, "");
       
@@ -121,24 +189,29 @@
       return cpf;
     }
 
+    // Função principal para processar os arquivos
     async function processarArquivos() {
+      // Pega os arquivos de entrada
       const admissaoInput = document.getElementById('admissaoFile').files[0];
       const relatorioInput = document.getElementById('relatorioFile').files[0];
       const cadastroInput = document.getElementById('cadastroFile').files[0];
       const relatorioOutput = document.getElementById('relatorioOutput');
-      relatorioOutput.textContent = '';
+      relatorioOutput.textContent = ''; // Limpa a área de relatório
 
+      // Verifica se todos os arquivos foram enviados
       if (!admissaoInput || !relatorioInput || !cadastroInput) {
         alert("Envie as três planilhas.");
         return;
       }
 
+      // Lê os arquivos e converte para JSON
       const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
         fileToJson(admissaoInput),
         fileToJson(relatorioInput),
         fileToJson(cadastroInput, { header: 1 })
       ]);
 
+      // Verifica se os arquivos não estão vazios
       if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
           alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
           return;
@@ -151,6 +224,7 @@
       const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
       const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
       
+      // Encontra as colunas de nome e CPF nas planilhas de admissão e relatório
       let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
       let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
       let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
@@ -167,6 +241,7 @@
         return;
       }
 
+      // Cria um mapa com nome normalizado e CPF correto do relatório
       const mapaCpfCorreto = new Map();
       for (const linha of relatorioJson) {
         const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
@@ -176,6 +251,7 @@
         }
       }
 
+      // Atualiza os CPFs na planilha de admissão
       let cpfsAtualizados = 0;
       for (const linha of admissaoJson) {
         const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
@@ -193,6 +269,7 @@
       const colunaIndiceAdmissao = 7;
       const colunaIndiceCpfCadastro = 15;
       
+      // Cria um mapa com CPF normalizado e dados de cadastro e admissão
       const mapaCadastroAdmissao = new Map();
       for (const linha of qlpData) {
           const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
@@ -227,19 +304,21 @@
           novaPlanilhaFinal.push(novaLinha);
       }
 
+      // Cria a mensagem de relatório para o usuário
       let mensagem = `✅ Processamento concluído.\n\n`;
       mensagem += `CPFs atualizados: ${cpfsAtualizados}\n`;
       mensagem += `Colunas de Cadastro e Admissão adicionadas.`;
       
       relatorioOutput.textContent = mensagem;
 
-      // Lógica de download
+      // Lógica para baixar o novo arquivo
       const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
       const novoWorkbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
       XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
     }
 
+    // Função auxiliar para converter o arquivo de entrada para JSON
     function fileToJson(file, options = {}) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
