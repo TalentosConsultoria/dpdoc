@@ -1,74 +1,75 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DPDOC - Talentos (Login Correto)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://alcdn.msauth.net/browser/2.34.0/js/msal-browser.js"></script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Principal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #212529;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            text-decoration: none;
+            color: #fff;
+            background-color: #007bff;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-  <div id="root" class="text-center text-lg text-gray-700">Verificando autenticação...</div>
-
-  <script type="text/javascript">
-    const msalConfig = {
-      auth: {
-        clientId: "aceb5b29-df99-4d90-8533-233407b08a2c",
-        authority: "https://login.microsoftonline.com/talentosconsultoria.com.br",
-        redirectUri: "https://dpdoc.talentosconsultoria.com.br"
-      }
-    };
-
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    const root = document.getElementById("root");
-
-    function renderSuccess(account) {
-      root.innerHTML = `
-        <div class="bg-white p-10 rounded-xl shadow-xl max-w-lg w-full border border-gray-200">
-          <h1 class="text-3xl font-bold text-blue-700 mb-4">Bem-vindo, ${account.name}!</h1>
-          <p class="mb-6">Você está logado com sucesso.</p>
-          <button onclick="logout()" class="bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-900 transition">Sair</button>
+<body>
+    <div class="container">
+        <h1>Menu Principal</h1>
+        <p>Escolha a ferramenta que deseja utilizar:</p>
+        
+        <div class="button-group">
+            <a href="qlp-format.html" class="button">Formatar QLP</a>
+            <a href="pdf-tool.html" class="button">Ferramenta PDF</a>
+            <a href="format-bancodoc.html" class="button">Processar Planilha Bancodoc</a>
         </div>
-      `;
-    }
-
-    function renderError(message) {
-      root.innerHTML = `<p class="text-red-600 text-xl font-semibold">${message}</p>`;
-    }
-
-    function logout() {
-      msalInstance.logoutRedirect();
-    }
-
-    msalInstance.handleRedirectPromise().then((response) => {
-      if (response && response.account) {
-        if (response.account.username.endsWith("@talentosconsultoria.com.br")) {
-          renderSuccess(response.account);
-        } else {
-          renderError("Usuário não autorizado. Domínio inválido.");
-          setTimeout(() => logout(), 2000);
-        }
-      } else {
-        const currentAccounts = msalInstance.getAllAccounts();
-        if (currentAccounts.length > 0) {
-          const account = currentAccounts[0];
-          if (account.username.endsWith("@talentosconsultoria.com.br")) {
-            renderSuccess(account);
-          } else {
-            renderError("Usuário não autorizado. Domínio inválido.");
-            setTimeout(() => logout(), 2000);
-          }
-        } else {
-          msalInstance.loginRedirect({ scopes: ["User.Read"] });
-        }
-      }
-    }).catch((error) => {
-      console.error(error);
-      renderError("Erro de autenticação. Tente novamente.");
-    });
-  </script>
+    </div>
 </body>
 </html>

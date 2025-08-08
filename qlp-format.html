@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatador de Planilhas com Seleção</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h2 {
+            color: #212529;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 15px 30px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+        .custom-file-upload:hover {
+            background-color: #218838;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: left;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-button:hover {
+            color: #555;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #212529;
+            font-weight: 500;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .column-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .column-list li {
+            margin: 12px 0;
+        }
+        .column-list label {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .column-list input[type="checkbox"] {
+            margin-right: 15px;
+            accent-color: #007bff;
+            width: 18px;
+            height: 18px;
+        }
+
+        .button-download {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: background-color 0.3s ease;
+        }
+        .button-download:hover {
+            background-color: #0056b3;
+        }
+        /* ESTILO DO BOTÃO HOME */
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <a href="index.html" class="home-button">← Voltar para a Home</a>
+
+    <div class="container">
+        <h2>Importar e Baixar Planilha Formatada</h2>
+        <p>Clique abaixo para importar sua planilha. Você será solicitado a selecionar as colunas que deseja manter e o novo cabeçalho antes do download.</p>
+        <label for="file-input" class="custom-file-upload">
+            Importar Planilha
+        </label>
+        <input id="file-input" type="file" accept=".csv, .xlsx, .xls" />
+    </div>
+
+    <div id="column-selection-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Selecione as colunas que deseja manter:</h3>
+            <ul id="column-list" class="column-list">
+            </ul>
+            <button class="button-download" onclick="downloadSelectedColumns()">Baixar Planilha</button>
+        </div>
+    </div>
+
+    <script>
+        let rawData;
+
+        const headerMapping = [
+            { newName: "CADASTRO", originalIndex: 0 },
+            { newName: "NOME", originalIndex: 1 },
+            { newName: "SITUACAO", originalIndex: 4 },
+            { newName: "FILIAL", originalIndex: 5 },
+            { newName: "VINCULO", originalIndex: 6 },
+            { newName: "ADMISSAO", originalIndex: 7 },
+            { newName: "CARGO", originalIndex: 8 },
+            { newName: "NASCIMENTO", originalIndex: 10 },
+            { newName: "CTPS", originalIndex: 11 },
+            { newName: "SERIE", originalIndex: 13 },
+            { newName: "RG", originalIndex: 14 },
+            { newName: "CPF", originalIndex: 15 },
+            { newName: "PIS", originalIndex: 16 }
+        ];
+
+        document.getElementById('file-input').addEventListener('change', handleFile, false);
+        document.querySelector('.close-button').addEventListener('click', () => {
+            document.getElementById('column-selection-modal').style.display = 'none';
+        });
+        window.addEventListener('click', (event) => {
+            if (event.target == document.getElementById('column-selection-modal')) {
+                document.getElementById('column-selection-modal').style.display = 'none';
+            }
+        });
+
+        function excelDateToJSDate(serial) {
+            const utc_days  = Math.floor(serial - 25569);
+            const utc_value = utc_days * 86400;
+            const date_info = new Date(utc_value * 1000);
+            const fractional_day = serial - Math.floor(serial) + 0.0000001;
+            let total_seconds = Math.floor(86400 * fractional_day);
+            const seconds = total_seconds % 60;
+            total_seconds -= seconds;
+            const minutes = total_seconds / 60 % 60;
+            total_seconds -= minutes * 60;
+            const hours = Math.floor(total_seconds / 3600);
+            const day = String(date_info.getDate()).padStart(2, '0');
+            const month = String(date_info.getMonth() + 1).padStart(2, '0');
+            const year = date_info.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function handleFile(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                displayColumnSelectionModal();
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function displayColumnSelectionModal() {
+            const columnList = document.getElementById('column-list');
+            columnList.innerHTML = '';
+
+            headerMapping.forEach(mapping => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <label>
+                        <input type="checkbox" checked value="${mapping.originalIndex}">
+                        ${mapping.newName}
+                    </label>
+                `;
+                columnList.appendChild(li);
+            });
+
+            document.getElementById('column-selection-modal').style.display = 'flex';
+        }
+
+        function downloadSelectedColumns() {
+            const checkedBoxes = document.querySelectorAll('#column-list input[type="checkbox"]:checked');
+            const columnsToKeep = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+            const newHeaders = Array.from(checkedBoxes).map(cb => {
+                const originalIndex = parseInt(cb.value);
+                const mapping = headerMapping.find(m => m.originalIndex === originalIndex);
+                return mapping ? mapping.newName : "COLUNA DESCONHECIDA";
+            });
+
+            processAndDownloadData(rawData, columnsToKeep, newHeaders);
+
+            document.getElementById('column-selection-modal').style.display = 'none';
+        }
+
+        function processAndDownloadData(data, columnsToKeep, newHeaders) {
+            if (data.length <= 4) {
+                alert("O arquivo não tem linhas suficientes para serem processadas.");
+                return;
+            }
+            const dataWithoutFirstFourRows = data.slice(4);
+
+            let finalDataRows = [];
+            let rowsKept = 0;
+            let rowsSkipped = 0;
+
+            for (let i = 0; i < dataWithoutFirstFourRows.length; i++) {
+                if (rowsKept < 46) {
+                    finalDataRows.push(dataWithoutFirstFourRows[i]);
+                    rowsKept++;
+                } else if (rowsSkipped < 5) {
+                    rowsSkipped++;
+                }
+
+                if (rowsSkipped === 5) {
+                    rowsKept = 0;
+                    rowsSkipped = 0;
+                }
+            }
+
+            const firstColumnIndex = 0;
+            const totalRowIndex = finalDataRows.findIndex(row =>
+                row[firstColumnIndex] && String(row[firstColumnIndex]).toLowerCase().includes("total")
+            );
+
+            if (totalRowIndex !== -1) {
+                finalDataRows = finalDataRows.slice(0, totalRowIndex);
+            }
+
+            const vinculoMapping = headerMapping.find(m => m.newName === "VINCULO");
+            const vinculoOriginalIndex = vinculoMapping ? vinculoMapping.originalIndex : -1;
+
+            const situacaoMapping = headerMapping.find(m => m.newName === "SITUACAO");
+            const situacaoOriginalIndex = situacaoMapping ? situacaoMapping.originalIndex : -1;
+
+            const filialMapping = headerMapping.find(m => m.newName === "FILIAL");
+            const filialOriginalIndex = filialMapping ? filialMapping.originalIndex : -1;
+
+            const cpfMapping = headerMapping.find(m => m.newName === "CPF");
+            const cpfOriginalIndex = cpfMapping ? cpfMapping.originalIndex : -1;
+
+            const pisMapping = headerMapping.find(m => m.newName === "PIS");
+            const pisOriginalIndex = pisMapping ? pisMapping.originalIndex : -1;
+
+            const admissaoMapping = headerMapping.find(m => m.newName === "ADMISSAO");
+            const admissaoOriginalIndex = admissaoMapping ? admissaoMapping.originalIndex : -1;
+
+            const nascimentoMapping = headerMapping.find(m => m.newName === "NASCIMENTO");
+            const nascimentoOriginalIndex = nascimentoMapping ? nascimentoMapping.originalIndex : -1;
+
+            const formattedData = finalDataRows.map(row => {
+                const newRow = [];
+
+                columnsToKeep.forEach(columnIndex => {
+                    let cellData = row[columnIndex] || '';
+
+                    if (columnIndex === vinculoOriginalIndex) {
+                        switch (cellData) {
+                            case 10: case "10":
+                                cellData = "EFETIVO/CLT";
+                                break;
+                            case 50: case "50":
+                                cellData = "TEMPORARIO";
+                                break;
+                            case 55: case "55":
+                                cellData = "JOVEM APRENDIZ";
+                                break;
+                        }
+                    }
+
+                    if (columnIndex === situacaoOriginalIndex) {
+                        switch (cellData) {
+                            case 1: case "1": case "001":
+                                cellData = "Trabalhando";
+                                break;
+                            case 2: case "2": case "002":
+                                cellData = "Férias";
+                                break;
+                            case 3: case "3": case "003":
+                                cellData = "Auxílio Doença";
+                                break;
+                            case 4: case "4": case "004":
+                                cellData = "Acidente de Trabalho";
+                                break;
+                            case 5: case "5": case "005":
+                                cellData = "Serviço Militar";
+                                break;
+                            case 6: case "6": case "006":
+                                cellData = "Licença Maternidade";
+                                break;
+                            case 7: case "7": case "007":
+                                cellData = "Demitido";
+                                break;
+                        }
+                    }
+
+                    if (columnIndex === filialOriginalIndex) {
+                        switch (cellData) {
+                            case 1: case "1": cellData = "TALENTOS - CLT"; break;
+                            case 2: case "2": cellData = "TALENTOS - TEMPORARIO"; break;
+                            case 3: case "3": cellData = "AMBEV CACHOEIRAS DE MACACU - CLT"; break;
+                            case 4: case "4": cellData = "AMBEV CACHOEIRAS DE MACACU - TEMPORARIO"; break;
+                            case 5: case "5": cellData = "AMBEV NOVA RIO - CLT"; break;
+                            case 6: case "6": cellData = "AMBEV NOVA RIO - TEMPORARIO"; break;
+                            case 7: case "7": cellData = "ARM ARMAZENS - CLT"; break;
+                            case 8: case "8": cellData = "ARM ARMAZENS - TEMPORARIO"; break;
+                            case 9: case "9": cellData = "BUNGE ALIMENTOS - CLT"; break;
+                            case 10: case "10": cellData = "BUNGE ALIMENTOS - TEMPORARIO"; break;
+                            case 11: case "11": cellData = "CARTA GOIAS - CLT"; break;
+                            case 12: case "12": cellData = "CARTA GOIAS - TEMPORARIO"; break;
+                            case 13: case "13": cellData = "GUANABARA T DE CASTRO - CLT"; break;
+                            case 14: case "14": cellData = "GUANABARA T DE CASTRO - TEMPORARIO"; break;
+                            case 15: case "15": cellData = "GUANABARA AGUA BRANCA - CLT"; break;
+                            case 16: case "16": cellData = "GUANABARA AGUA BRANCA - TEMPORARIO"; break;
+                            case 17: case "17": cellData = "CERVEJARIA BOHEMIA - CLT"; break;
+                            case 18: case "18": cellData = "CERVEJARIA BOHEMIA - TEMPORARIO"; break;
+                            case 19: case "19": cellData = "CLUB MED - CLT"; break;
+                            case 20: case "20": cellData = "CLUB MED - TEMPORARIO"; break;
+                            case 21: case "21": cellData = "CEPE/RIO - CLT"; break;
+                            case 22: case "22": cellData = "CEPE/RIO - TEMPORARIO"; break;
+                            case 23: case "23": cellData = "CORRFA - CLT"; break;
+                            case 24: case "24": cellData = "CORRFA - TEMPORARIO"; break;
+                            case 25: case "25": cellData = "CONSORCIO PIPE - CLT"; break;
+                            case 26: case "26": cellData = "CONSORCIO PIPE - TEMPORARIO"; break;
+                            case 27: case "27": cellData = "HALLIDAY GUIMARAES - CLT"; break;
+                            case 28: case "28": cellData = "HALLIDAY GUIMARAES - TEMPORARIO"; break;
+                            case 29: case "29": cellData = "CONTRUTORA NORBERTO ODEBRECHT - CLT"; break;
+                            case 30: case "30": cellData = "CONTRUTORA NORBERTO ODEBRECHT - TEMPORARIO"; break;
+                            case 31: case "31": cellData = "CRBS CDD JPA - CLT"; break;
+                            case 32: case "32": cellData = "CRBS CDD JPA - TEMPORARIO"; break;
+                            case 33: case "33": cellData = "CRBS CDD PAVUNA - CLT"; break;
+                            case 34: case "34": cellData = "CRBS CDD PAVUNA - TEMPORARIO"; break;
+                            case 35: case "35": cellData = "CRBS CDD SC - CLT"; break;
+                            case 36: case "36": cellData = "CRBS CDD SC - TEMPORARIO"; break;
+                            case 37: case "37": cellData = "CERVEJARIA JAGUARIUNA - CLT"; break;
+                            case 38: case "38": cellData = "CERVEJARIA JAGUARIUNA - TEMPORARIO"; break;
+                            case 39: case "39": cellData = "CERVEJARIA AGUAS CLARAS - CLT"; break;
+                            case 40: case "40": cellData = "CERVEJARIA AGUAS CLARAS - TEMPORARIO"; break;
+                            case 41: case "41": cellData = "CERVEJARIA LEYENDA - CLT"; break;
+                            case 42: case "42": cellData = "CERVEJARIA LEYENDA - TEMPORARIO"; break;
+                            case 43: case "43": cellData = "CERVEJARIA SAO LUIS - CLT"; break;
+                            case 44: case "44": cellData = "CERVEJARIA SAO LUIS - TEMPORARIO"; break;
+                            case 45: case "45": cellData = "CERVEJARIA SAO LUIS FABRICA - CLT"; break;
+                            case 46: case "46": cellData = "CERVEJARIA SAO LUIS FABRICA - TEMPORARIO"; break;
+                            case 47: case "47": cellData = "CONSTRUTORA QUEIROZ GALVAO - CLT"; break;
+                            case 48: case "48": cellData = "CONSTRUTORA QUEIROZ GALVAO - TEMPORARIO"; break;
+                            case 49: case "49": cellData = "CONSTRUTORA QUEIROZ GALVAO - GO"; break;
+                            case 50: case "50": cellData = "CONSTRUTORA QUEIROZ GALVAO - GO"; break;
+                            case 51: case "51": cellData = "CONSTRUTORA QUEIROZ GALVAO - SP"; break;
+                            case 52: case "52": cellData = "VIGODENT INDUSTRIA - CLT"; break;
+                            case 53: case "53": cellData = "VIGODENT INDUSTRIA - TEMPORARIO"; break;
+                            case 54: case "54": cellData = "VIATRIS DISTRIBUIDORA - CLT"; break;
+                            case 55: case "55": cellData = "VIATRIS DISTRIBUIDORA - TEMPORARIO"; break;
+                            case 56: case "56": cellData = "CONSORCIO PIPE - CLT"; break;
+                            case 57: case "57": cellData = "CONSORCIO PIPE - TEMPORARIO"; break;
+                            case 58: case "58": cellData = "BRF - CLT"; break;
+                            case 59: case "59": cellData = "VIATRIS CAMPOS"; break;
+                            case 60: case "60": cellData = "VIATRIS CAMPOS - TEMPORARIO"; break;
+                            case 61: case "61": cellData = "MYLAN/VIATRIS CAMPINAS - CLT"; break;
+                            case 62: case "62": cellData = "MYLAN/VIATRIS CAMPINAS - TEMPORARIO"; break;
+                            case 63: case "63": cellData = "PROJETO VILA LEOPOLDINA - CLT"; break;
+                            case 64: case "64": cellData = "PROJETO VILA LEOPOLDINA - TEMPORARIO"; break;
+                            case 65: case "65": cellData = "PROJETO VOLTA REDONDA - CLT"; break;
+                            case 66: case "66": cellData = "PROJETO VOLTA REDONDA - TEMPORARIO"; break;
+                            case 67: case "67": cellData = "PROJETO MINAS GERAIS - CLT"; break;
+                            case 68: case "68": cellData = "PROJETO MINAS GERAIS - TEMPORARIO"; break;
+                            case 69: case "69": cellData = "CRBS CDD VOLTA REDONDA - CLT"; break;
+                            case 70: case "70": cellData = "CRBS CDD VOLTA REDONDA - TEMPORARIO"; break;
+                            case 71: case "71": cellData = "CRBS CDD NOVA IGUAÇU - CLT"; break;
+                            case 72: case "72": cellData = "CRBS CDD NOVA IGUAÇU - TEMPORARIO"; break;
+                            case 73: case "73": cellData = "CRBS CDD VOLTA REDONDA - CLT"; break;
+                            case 74: case "74": cellData = "CRBS CDD VOLTA REDONDA - TEMPORARIO"; break;
+                            case 75: case "75": cellData = "ALYA - CLT"; break;
+                            case 76: case "76": cellData = "ALYA - TEMPORARIO"; break;
+                            case 77: case "77": cellData = "PROJETO JPA ARQUIVO CLT"; break;
+                            case 78: case "78": cellData = "PROJETO JPA ARQUIVO TEMP"; break;
+                            case 79: case "79": cellData = "EXTERRAN - CLT"; break;
+                            case 80: case "80": cellData = "EXTERRAN - TEMPORARIO"; break;
+                            case 81: case "81": cellData = "MYLAN DISTRIBUIDORA DE MEDICAMENTOS - CLT"; break;
+                            case 82: case "82": cellData = "MYLAN DISTRIBUIDORA DE MEDICAMENTOS - TEMPORARIO"; break;
+                            case 83: case "83": cellData = "AMBEV JAGUARIUNA - CLT"; break;
+                            case 84: case "84": cellData = "AMBEV JAGUARIUNA - TEMPORARIO"; break;
+                            case 85: case "85": cellData = "BELA VISTA INCORPORADORA - CLT"; break;
+                            case 86: case "86": cellData = "BELA VISTA INCORPORADORA - TEMPORARIO"; break;
+                            case 87: case "87": cellData = "KONGSBERG MARITIME CM BRASIL LTDA. - CLT"; break;
+                            case 88: case "88": cellData = "KONGSBERG MARITIME CM BRASIL LTDA - TEMPORARIO"; break;
+                            case 89: case "89": cellData = "CNO S/A - CLT"; break;
+                            case 90: case "90": cellData = "CNO S/A - TEMPORARIO"; break;
+                            case 91: case "91": cellData = "BLU (ENOPP) - CLT"; break;
+                            case 92: case "92": cellData = "BLU (ENOPP) - TEMPORARIO"; break;
+                            case 93: case "93": cellData = "MYLAN BRASIL DISTRIBUIDORA - CLT"; break;
+                            case 94: case "94": cellData = "MYLAN BRASIL DISTRIBUIDORA - TEMPORARIO"; break;
+                            case 95: case "95": cellData = "BALL EMBALAGENS LTDA - CLT"; break;
+                            case 96: case "96": cellData = "BALL EMBALAGENS LTDA - TEMPORARIOS"; break;
+                            case 97: case "97": cellData = "LATICINIOS BELA VISTA - CLT"; break;
+                            case 98: case "98": cellData = "LATICINIOS BELA VISTA - TEMPORARIO"; break;
+                            case 99: case "99": cellData = "TALENTOS RJ - CLT"; break;
+                            case 100: case "100": cellData = "TALENTOS RJ - TEMPORARIO"; break;
+                            case 101: case "101": cellData = "TALENTOS SP - CLT"; break;
+                            case 102: case "102": cellData = "AMBEV PIRAI - CLT"; break;
+                            case 103: case "103": cellData = "AMBEV PIRAI - TEMPORARIO"; break;
+                            case 104: case "104": cellData = "AMBEV VIDROS - CLT"; break;
+                            case 105: case "105": cellData = "AMBEV VIDROS - TEMPORARIO"; break;
+                            case 106: case "106": cellData = "KONGSBERG MARITIME - CLT"; break;
+                            case 107: case "107": cellData = "KONGSBERG MARITIME - TEMPORARIO"; break;
+                            case 108: case "108": cellData = "SVITZER - CLT"; break;
+                            case 109: case "109": cellData = "SVITZER - TEMPORARIO"; break;
+                            case 110: case "110": cellData = "VIATRIS BRASIL - CLT"; break;
+                            case 111: case "111": cellData = "VIATRIS BRASIL - TEMPORARIO"; break;
+                            case 112: case "112": cellData = "GREIF - CLT"; break;
+                            case 113: case "113": cellData = "VIATRIS SP - CLT"; break;
+                            case 114: case "114": cellData = "ABS - CLT"; break;
+                            case 115: case "115": cellData = "ABS - TEMPORARIO"; break;
+                            case 116: case "116": cellData = "RUHRPUMPEN - CLT"; break;
+                            case 117: case "117": cellData = "RUHRPUMPEN - TEMPORARIO"; break;
+                            case 118: case "118": cellData = "AMBEV NOVA RIO EMP - CLT"; break;
+                            case 119: case "119": cellData = "AMBEV NOVA RIO EMP - TEMPORARIO"; break;
+                        }
+                    }
+
+                    if (columnIndex === cpfOriginalIndex) {
+                        let cpf = String(cellData).replace(/\D/g, '');
+                        cpf = cpf.padStart(11, '0');
+                        if (cpf.length === 11) {
+                            cellData = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        }
+                    }
+
+                    if (columnIndex === pisOriginalIndex) {
+                        let pis = String(cellData).replace(/\D/g, '');
+                        pis = pis.padStart(11, '0');
+                        if (pis.length === 11) {
+                            cellData = pis.replace(/(\d{3})(\d{5})(\d{2})(\d{1})/, '$1.$2.$3-$4');
+                        }
+                    }
+
+                    if (columnIndex === admissaoOriginalIndex && typeof cellData === 'number') {
+                        cellData = excelDateToJSDate(cellData);
+                    }
+
+                    if (columnIndex === nascimentoOriginalIndex && typeof cellData === 'number') {
+                        cellData = excelDateToJSDate(cellData);
+                    }
+
+                    newRow.push(cellData);
+                });
+                return newRow;
+            });
+
+            formattedData.unshift(newHeaders);
+
+            const newWorkbook = XLSX.utils.book_new();
+            const newWorksheet = XLSX.utils.aoa_to_sheet(formattedData);
+
+            const headerRange = XLSX.utils.decode_range(newWorksheet['!ref']);
+            for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+                const address = XLSX.utils.encode_cell({ r: 0, c: C });
+                if (!newWorksheet[address]) continue;
+                newWorksheet[address].s = { font: { bold: true } };
+            }
+
+            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Planilha Formatada");
+
+            XLSX.writeFile(newWorkbook, "planilha_formatada.xlsx");
+
+            document.getElementById('file-input').value = null;
+            alert("Download concluído! Você pode importar uma nova planilha.");
+        }
+    </script>
+</body>
+</html>
