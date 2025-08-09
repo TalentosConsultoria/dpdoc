@@ -1,14 +1,12 @@
 <script type="module">
-  // ------ Firebase SDK (v9 modular) ------
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import {
     getAuth, onAuthStateChanged, getRedirectResult,
     OAuthProvider, signInWithRedirect
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-  // Seu config (o mesmo que já está nas outras páginas)
   const firebaseConfig = {
-    apiKey: "AIzaSyAL8t7sgoCoNj3nkfUG3mkZ0WEpRmH3k8",
+    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
     authDomain: "talentosbd-e4206.firebaseapp.com",
     projectId: "talentosbd-e4206",
     storageBucket: "talentosbd-e4206.appspot.com",
@@ -20,81 +18,43 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
-  // --------- util ----------
-  const params = new URLSearchParams(window.location.search);
-  let returnUrl = params.get("return");
-  if (!returnUrl || returnUrl === "null" || returnUrl === "undefined") {
-    // se não mandaram destino, volta pro index
-    returnUrl = "index.html";
-  }
+  const params = new URLSearchParams(location.search);
+  let returnUrl = params.get("return") || "index.html";
 
-  // botao manual (caso o navegador bloqueie o redirect automático)
   const btn = document.getElementById("btn-ms");
-  const setBusy = (b) => {
-    if (b) {
-      btn.setAttribute("disabled", "disabled");
-      btn.innerText = "Redirecionando…";
-    } else {
-      btn.removeAttribute("disabled");
-      btn.innerText = "Entrar com Microsoft";
-    }
-  };
+  const setBusy = (b)=>{ if(btn){ b?btn.setAttribute("disabled",""):btn.removeAttribute("disabled"); } };
 
-  // --------- Provider Microsoft ---------
   const provider = new OAuthProvider("microsoft.com");
-  // Sugestão do seu domínio; não força tenant, evita AADSTS90002
-  provider.setCustomParameters({
-    domain_hint: "talentosconsultoria.com.br",
-    prompt: "select_account"
-  });
+  provider.setCustomParameters({ domain_hint: "talentosconsultoria.com.br", prompt: "select_account" });
 
-  async function doRedirectLogin() {
-    try {
-      sessionStorage.setItem("msLoginInProgress", "1");
-      setBusy(true);
-      await signInWithRedirect(auth, provider);
-    } catch (e) {
-      console.error(e);
-      setBusy(false);
-      sessionStorage.removeItem("msLoginInProgress");
-      alert("Não consegui iniciar o login. Tente novamente.");
-    }
+  async function doRedirectLogin(){
+    sessionStorage.setItem("msLoginInProgress","1");
+    setBusy(true);
+    await signInWithRedirect(auth, provider);
   }
 
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    doRedirectLogin();
-  });
+  if (btn) btn.addEventListener("click", (e)=>{ e.preventDefault(); doRedirectLogin(); });
 
-  // 1) Primeiro, tenta consumir o resultado do redirect (se houver)
   try {
     setBusy(true);
     const res = await getRedirectResult(auth);
-    if (res && res.user) {
+    if (res?.user) {
       sessionStorage.removeItem("msLoginInProgress");
-      // sucesso: manda para o destino
-      window.location.replace(returnUrl);
+      location.replace(returnUrl);
     } else {
-      // 2) Se não há resultado, checa se já está logado por cache
-      onAuthStateChanged(auth, (user) => {
+      onAuthStateChanged(auth, (user)=>{
         if (user) {
           sessionStorage.removeItem("msLoginInProgress");
-          window.location.replace(returnUrl);
+          location.replace(returnUrl);
         } else {
-          // 3) Não logado: dispara o redirect apenas 1x
-          const inProgress = sessionStorage.getItem("msLoginInProgress") === "1";
-          if (!inProgress) {
-            doRedirectLogin();          // automático
-          } else {
-            setBusy(false);              // caiu aqui por bloqueio do navegador
-          }
+          const inProgress = sessionStorage.getItem("msLoginInProgress")==="1";
+          if (!inProgress) doRedirectLogin(); else setBusy(false);
         }
       });
     }
-  } catch (err) {
-    console.error("Erro no getRedirectResult:", err);
+  } catch (e) {
+    console.error(e);
     sessionStorage.removeItem("msLoginInProgress");
     setBusy(false);
-    // deixa o botão para o usuário tentar novamente
   }
 </script>
