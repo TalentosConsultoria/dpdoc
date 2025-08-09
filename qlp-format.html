@@ -161,36 +161,8 @@
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-<!-- Firebase compat (Auth) + Guard centralizado -->
-<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
-<script src="guard.js"></script>
-
 </head>
 <body>
-  <!-- Barra do usuário (mostrada após autenticar) -->
-  <div id="userbar" style="display:none;gap:10px;align-items:center;background:#0b3bda;color:#fff;padding:8px 12px;position:fixed;left:10px;top:10px;border-radius:999px;z-index:9999">
-    <span id="uemail"></span>
-    <button id="logout" style="all:unset;background:#fff;color:#0b3bda;padding:4px 10px;border-radius:999px;cursor:pointer;margin-left:8px">Sair</button>
-  </div>
-
-<!-- Guard: exige sessão antes de exibir a página -->
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-<script>
-  const firebaseConfig = {'apiKey': 'AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8', 'authDomain': 'talentosbd-e4206.firebaseapp.com', 'projectId': 'talentosbd-e4206', 'storageBucket': 'talentosbd-e4206.appspot.com', 'messagingSenderId': '580727253031', 'appId': '1:580727253031:web:5363082ef0da6277788602'};
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  (async () => {
-    const wait = () => new Promise(r => {
-      const unsub = firebase.auth().onAuthStateChanged(u => { unsub(); r(u||null); });
-    });
-    const user = firebase.auth().currentUser || await wait();
-    const ret = (location.pathname.replace(/^\//,'') || 'index.html') + (location.search || '');
-    if (!user) location.replace('login.html?return=' + encodeURIComponent(ret));
-  })();
-</script>
-
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>

@@ -1,85 +1,132 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Acesso Talentos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><text y='1em' font-size='90'>🔐</text></svg>">
   <style>
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:#eef3ff;margin:0;
-         display:flex;min-height:100vh;align-items:center;justify-content:center}
-    .card{background:#fff;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.08);
-          width:90%;max-width:520px;padding:36px;text-align:center}
-    h1{margin:0 0 10px;color:#1e40af}
-    p{margin:0 0 14px;color:#475569}
-    .muted{color:#64748b;font-size:14px}
+    body{margin:0;background:#eef3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
+    .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
+    .card{background:#fff;width:min(560px,92vw);padding:30px 26px;border-radius:16px;box-shadow:0 20px 60px rgba(0,40,140,.15)}
+    h1{margin:0 0 8px;font-size:28px;color:#1f3aad}
+    p{margin:0 0 18px;color:#334}
+    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer}
+    .hint{color:#64748b;font-size:12px;margin-top:10px}
+    .err{margin-top:12px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:10px;display:none;white-space:pre-wrap}
   </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Acesso Talentos</h1>
-    <p>Redirecionando para login corporativo…</p>
-    <p class="muted" id="msg"></p>
-  </div>
 
   <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script>
-    // Config do seu projeto
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5363082ef0da6277788602"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Acesso Talentos</h1>
+      <p id="status">Redirecionando para login corporativo…</p>
+      <button id="btnLogin" class="btn" style="display:none">Entrar com Microsoft</button>
+      <div class="hint">Se não redirecionar automaticamente, clique no botão.</div>
+      <div id="err" class="err"></div>
+    </div>
+  </div>
 
-    const auth = firebase.auth();
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    // Fixa o tenant para evitar /common
-    provider.setCustomParameters({ tenant: 'cba0be9f-94ad-4a26-b291-fa90af7491ee' });
+<script>
+// ====== Firebase config — igual ao guard.js ======
+const firebaseConfig = {
+  apiKey: "AIzaSyAL8t7sgoCoNj3nkfUG3mkz0WEpRmH3K8",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
+  projectId: "talentosbd-e4206"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-    const msg = (t) => document.getElementById('msg').textContent = t ?? '';
+const TENANT_ID = "cba0be9f-94ad-4a26-b291-fa90af7491ee"; // Talentos
+const ORIGIN = location.origin;
+const FLAG_REDIRECT = "authRedirectStarted";
 
-    function goHome() {
-      const sp = new URLSearchParams(location.search);
-      const retRaw = sp.get('return') || 'index.html';
-      let target = 'index.html';
-      try {
-        // Permite apenas mesma origem (mesmo domínio)
-        const u = new URL(retRaw, location.href);
-        if (u.origin === location.origin) {
-          target = u.pathname + u.search + u.hash;
-        }
-      } catch (_) { /* ignora e usa o default */ }
-      location.replace(target);
+// Util: lê ?return=, garante mesma origem e bloqueia voltar ao próprio login
+function safeReturnUrl() {
+  const qp = new URLSearchParams(location.search);
+  let target = (qp.get("return") || "index.html").trim();
+  try {
+    const u = new URL(target, ORIGIN);
+    if (u.origin !== ORIGIN) return "index.html";
+    const file = (u.pathname.split("/").pop() || "").toLowerCase();
+    if (file === "login.html" || file === "login-firebase.html") return "index.html";
+    return u.pathname.replace(/^\//,"") + (u.search||"") + (u.hash||"");
+  } catch {
+    const f = target.toLowerCase();
+    if (f === "login.html" || f === "login-firebase.html") return "index.html";
+    return target;
+  }
+}
+
+const provider = new firebase.auth.OAuthProvider('microsoft.com');
+provider.setCustomParameters({
+  tenant: TENANT_ID,
+  domain_hint: "talentosconsultoria.com.br"
+});
+
+const auth = firebase.auth();
+
+function setStatus(txt){ document.getElementById("status").textContent = txt; }
+function showBtn(){ document.getElementById("btnLogin").style.display = "inline-block"; }
+function showErr(e){ const el = document.getElementById("err"); el.textContent = e; el.style.display = "block"; }
+
+async function handleRedirectResult() {
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      const dest = safeReturnUrl();
+      sessionStorage.removeItem(FLAG_REDIRECT);
+      location.replace(dest);
+      return true;
     }
+  } catch (e) {
+    console.warn("getRedirectResult:", e);
+    showErr(e.message || String(e));
+  }
+  return false;
+}
 
-    auth.onAuthStateChanged(async (user) => {
-      try {
-        if (user) {                // Já está logado (voltou do redirect)
-          goHome();
-          return;
-        }
-        // Verifica se existe resultado do redirect já pronto
-        const res = await auth.getRedirectResult();
-        if (res && res.user) {     // Login acabou de acontecer
-          goHome();
-          return;
-        }
-        // Se não veio usuário ainda, inicia o login por redirect automaticamente
-        msg('Abrindo provedores da Microsoft…');
-        await auth.signInWithRedirect(provider);
-      } catch (e) {
-        console.error(e);
-        msg('Erro ao autenticar: ' + (e && e.message ? e.message : e));
-      }
-    });
-  </script>
+// Se já está logado (cache), vai direto
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    const dest = safeReturnUrl();
+    sessionStorage.removeItem(FLAG_REDIRECT);
+    location.replace(dest);
+  } else {
+    // sem user: exibe botão como fallback
+    showBtn();
+  }
+});
+
+async function startLogin() {
+  try {
+    sessionStorage.setItem(FLAG_REDIRECT, "1");
+    await auth.signInWithRedirect(provider);
+  } catch (e) {
+    showErr("Não foi possível iniciar o login. " + (e.message || e));
+  }
+}
+
+document.getElementById("btnLogin").addEventListener("click", startLogin);
+
+(async () => {
+  setStatus("Verificando sessão…");
+  const finished = await handleRedirectResult();
+  if (finished) return;
+
+  // Se ainda não iniciou redirect nesta aba, dispara automático
+  if (!sessionStorage.getItem(FLAG_REDIRECT)) {
+    setStatus("Redirecionando para Microsoft…");
+    startLogin();
+  } else {
+    // Estamos aguardando retorno
+    setStatus("Aguardando retorno da Microsoft…");
+    showBtn();
+  }
+})();
+</script>
 </body>
 </html>

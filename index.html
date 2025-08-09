@@ -1,174 +1,199 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Menu Principal - Talentos Consultoria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Principal - Talentos Consultoria</title>
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter','sans-serif'] },
-          colors: {
-            primary: '#004aad',
-            secondary: '#196dff',
-            background: '#f1f5f9',
-            card: '#ffffff',
-          }
+    <!-- Incluindo Tailwind CSS para um design responsivo e moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Configuração para usar a fonte Inter e cores personalizadas da logo -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad', /* Cor azul escura da logo */
+                        secondary: '#196dff', /* Cor azul mais clara da logo */
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
+            }
         }
-      }
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Favicon (opcional; coloque um arquivo favicon.ico na raiz) -->
-  <link rel="icon" href="/favicon.ico">
-
-  <!-- Firebase (compat para manter a mesma API do seu login) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
-  <!-- Seu firebaseConfig (o mesmo do login) -->
-  <script>
-    // Substitua por seu config caso tenha mudado
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7sgpCoN3jnkfUG3mkZ0WEpmkH3kB8",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5363802efd0a6277788602",
-      measurementId: "G-S46ALNX2J9"
-    };
-    // Evita reinicializar se já estiver
-    if (firebase.apps?.length === 0) {
-      firebase.initializeApp(firebaseConfig);
-    }
-  </script>
-
-  <style>
-    /* evita flash antes da auth */
-    #app { display:none; }
-  </style>
-
-<!-- Firebase compat (Auth) + Guard centralizado -->
-<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
-<script src="guard.js"></script>
-
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen font-sans">
-  <!-- Barra do usuário (mostrada após autenticar) -->
-  <div id="userbar" style="display:none;gap:10px;align-items:center;background:#0b3bda;color:#fff;padding:8px 12px;position:fixed;left:10px;top:10px;border-radius:999px;z-index:9999">
-    <span id="uemail"></span>
-    <button id="logout" style="all:unset;background:#fff;color:#0b3bda;padding:4px 10px;border-radius:999px;cursor:pointer;margin-left:8px">Sair</button>
-  </div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+
+<script>
+// ==== Firebase Init (Talentos) ====
+const firebaseConfig = {
+  apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
+  projectId: "talentosbd-e4206",
+  storageBucket: "talentosbd-e4206.appspot.com",
+  messagingSenderId: "580727253031",
+  appId: "1:580727253031:web:5363082ef0da6277788602",
+  measurementId: "G-S464LNX2J9"
+};
+firebase.initializeApp(firebaseConfig);
+window.fbAuth = firebase.auth();
+window.fbStore = firebase.firestore();
+window.fbStorage = firebase.storage();
+// Persistência local
+fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+// Resolve redirects (importante fora do Hosting do Firebase)
+fbAuth.getRedirectResult().catch(console.error);
+// helper
+window.onAuthReady = () => new Promise(resolve => {
+  const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u || null); });
+});
+</script>
+
+<!-- Auth bar + Microsoft login -->
+<div id="auth-bar" style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:#eef3ff;border-bottom:1px solid #dbe3ff">
+  <span id="auth-user" style="opacity:.85">Desconectado</span>
+  <button id="btn-ms" style="margin-left:auto;background:#2563eb;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Entrar com Microsoft</button>
+  <button id="btn-logout" style="display:none;background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Sair</button>
+
+<script>
+// ==== Guard de Autenticação (redireciona para login se necessário) ====
+(async function(){
+  try {
+    // Espera auth pronto (se definido pelo index). Se não, usa onAuthStateChanged inline.
+    function ready(){
+      return new Promise(res => {
+        const unsub = firebase.auth().onAuthStateChanged(u => { unsub(); res(u||null); });
+      });
+    }
+    const user = firebase.auth().currentUser || await ready();
+    if (!user) {
+      const login = 'login-firebase.html?return=' + encodeURIComponent(location.pathname.split('/').pop());
+      location.replace(login);
+      return;
+    }
+    // Restringe ao domínio talentosconsultoria.com.br
+    const email = (user.email||'').toLowerCase();
+    if (!email.endsWith('@talentosconsultoria.com.br')) {
+      await firebase.auth().signOut();
+      const login = 'login-firebase.html?return=' + encodeURIComponent(location.pathname.split('/').pop());
+      location.replace(login);
+    }
+  } catch(e){ console.error('Auth guard error:', e); }
+})();
+</script>
+
+<script>
+function updateAuthBar(user){
+  const span = document.getElementById('auth-user');
+  const ms = document.getElementById('btn-ms');
+  const out = document.getElementById('btn-logout');
+  if (user){
+    span.textContent = `Olá, ${user.displayName || user.email || user.uid}`;
+    ms.style.display = 'none';
+    out.style.display = '';
+  } else {
+    span.textContent = 'Desconectado';
+    ms.style.display = '';
+    out.style.display = 'none';
+  }
+}
+fbAuth.onAuthStateChanged(updateAuthBar);
+
+document.getElementById('btn-ms').onclick = async () => {
+  const provider = new firebase.auth.OAuthProvider('microsoft.com');
+  try {
+    await fbAuth.signInWithPopup(provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+      await fbAuth.signInWithRedirect(provider);
+    } else {
+      alert(e.message);
+    }
+  }
+};
+document.getElementById('btn-logout').onclick = () => fbAuth.signOut();
+</script>
 
 
-  <!-- TUDO que aparece depois do login fica dentro de #app -->
-  <div id="app">
-    <!-- Header -->
+    <!-- Header / Navbar com a logo e os links no canto superior direito -->
     <header class="bg-white shadow-md p-4 sticky top-0 z-50">
-      <div class="container mx-auto flex justify-between items-center">
-        <a href="index.html" class="flex items-center space-x-2">
-          <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png"
-               alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
-          <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
-        </a>
-
-        <!-- Navegação -->
-        <nav class="relative flex items-center gap-4">
-          <span class="text-sm text-gray-500">Olá, <strong id="auth-user">carregando...</strong></span>
-
-          <button id="tools-dropdown-button"
-                  class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
-            <span>Ferramentas</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          <div id="tools-dropdown-menu"
-               class="absolute right-0 mt-10 w-48 bg-white rounded-md shadow-lg py-1 hidden">
-            <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
-            <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
-            <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
-          </div>
-        </nav>
-      </div>
+        <div class="container mx-auto flex justify-between items-center">
+            <!-- Logo com link para a página principal -->
+            <a href="index.html" class="flex items-center space-x-2">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+                <!-- Alterado a cor do texto para 'red-700' e mantido o negrito -->
+                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+            </a>
+            <!-- Links de navegação no canto superior direito -->
+            <nav class="relative">
+                <!-- Botão do dropdown para "Ferramentas" -->
+                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+                    <span>Ferramentas</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <!-- Menu do dropdown que será exibido/ocultado com JavaScript -->
+                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        QLP
+                    </a>
+                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        PDF
+                    </a>
+                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Bdoc
+                    </a>
+                </div>
+            </nav>
+        </div>
     </header>
 
-    <!-- Main -->
+    <!-- Seção principal da página com a mensagem de boas-vindas -->
     <main class="flex-grow flex justify-center items-center p-4">
-      <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
-        <p class="text-md md:text-lg text-gray-600">
-          Utilize os links acima para acessar as ferramentas que você precisa.
-        </p>
-      </div>
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
+            <p class="text-md md:text-lg text-gray-600">
+                Utilize os links acima para acessar as ferramentas que você precisa.
+            </p>
+        </div>
     </main>
-
-    <!-- Rodapé -->
+    
+    <!-- Rodapé simples -->
     <footer class="bg-gray-800 text-white text-center p-4">
-      <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
+        <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
     </footer>
-  </div>
 
-  <!-- Guard de autenticação + dropdown -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const app = document.getElementById('app');
-
-      function waitAuth() {
-        return new Promise(resolve => {
-          const off = firebase.auth().onAuthStateChanged(u => { off(); resolve(u || null); });
+    <!-- Script para controlar o menu suspenso (dropdown) -->
+    <script>
+        document.getElementById('tools-dropdown-button').addEventListener('click', function() {
+            var dropdownMenu = document.getElementById('tools-dropdown-menu');
+            dropdownMenu.classList.toggle('hidden');
         });
-      }
 
-      (async () => {
-        try {
-          const user = firebase.auth().currentUser || await waitAuth();
-
-          if (!user) {
-            // não logado -> manda pro login e volta pro index
-            const ret = encodeURIComponent('index.html');
-            location.replace('login.html?return=' + ret);
-            return;
-          }
-
-          // popular nome
-          const span = document.getElementById('auth-user');
-          if (span) span.textContent = user.displayName || user.email || 'Usuário';
-
-          // mostrar UI
-          app.style.display = '';
-        } catch (e) {
-          console.error('Auth init error:', e);
-          // em caso de erro, ainda mostra a UI pra você ver o console
-          app.style.display = '';
-        }
-      })();
-
-      // Dropdown
-      const btn = document.getElementById('tools-dropdown-button');
-      const menu = document.getElementById('tools-dropdown-menu');
-      if (btn && menu) {
-        btn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          menu.classList.toggle('hidden');
+        // Fecha o dropdown se o usuário clicar fora dele
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('#tools-dropdown-button, #tools-dropdown-button *')) {
+                var dropdownMenu = document.getElementById('tools-dropdown-menu');
+                if (!dropdownMenu.classList.contains('hidden')) {
+                    dropdownMenu.classList.add('hidden');
+                }
+            }
         });
-        document.addEventListener('click', (ev) => {
-          if (!btn.contains(ev.target) && !menu.contains(ev.target)) {
-            menu.classList.add('hidden');
-          }
-        });
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
