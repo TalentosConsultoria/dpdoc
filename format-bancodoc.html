@@ -92,6 +92,29 @@
 </head>
 <body>
 
+<!-- Auth Guard -->
+<script>
+(async function(){
+  try {
+    function waitAuth(){ return new Promise(r=>{const u=firebase.auth().onAuthStateChanged(x=>{u();r(x||null);});}); }
+    const user = firebase.auth().currentUser || await waitAuth();
+    const path = location.pathname.replace(/^\//,'');
+    const returnTo = path && path !== 'login.html' ? path : 'index.html';
+    if (!user) {
+      location.replace('login.html?return=' + encodeURIComponent(returnTo));
+      return;
+    }
+    const email = (user.email||'').toLowerCase();
+    if (!email.endsWith('@talentosconsultoria.com.br')) {
+      await firebase.auth().signOut();
+      location.replace('login.html?return=' + encodeURIComponent(returnTo));
+      return;
+    }
+  } catch(e){ console.error('Auth guard error:', e); }
+})();
+</script>
+
+
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
