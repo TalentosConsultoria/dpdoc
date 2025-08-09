@@ -51,7 +51,8 @@
     }
 
     async function startLogin(){
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      const provider = new firebase.auth.OAuthProvider('microsoft.com')
+  ;provider.setCustomParameters({ tenant: 'talentosconsultoria.com.br' });
       try {
         await fbAuth.signInWithPopup(provider);
       } catch (e) {
