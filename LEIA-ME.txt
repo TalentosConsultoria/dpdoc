@@ -1,0 +1,17 @@
+Como usar
+
+1) Substitua o seu login.html pelo arquivo desta pasta.
+   Ele corrige o redirecionamento pós‑login e evita loops.
+
+2) Se quiser bloquear acesso direto a outras páginas (index.html, qlp-format.html,
+   pdf-tool.html, format-bancodoc.html etc.), cole o conteúdo de _guard.html dentro
+   da TAG <head> dessas páginas.
+
+3) Para enviar o usuário para uma página específica após logar, chame o login com:
+      login.html?return=<caminho>
+   Ex.: login.html?return=index.html
+
+Observação
+- O destino (return=) é validado para garantir que fique no mesmo domínio.
+- O botão “Entrar com Microsoft” continua disponível caso o redirecionamento
+  automático do navegador seja bloqueado.
