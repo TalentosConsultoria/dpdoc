@@ -1,57 +1,480 @@
-<!doctype html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Bancodoc - Talentos</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><text y='1em' font-size='90'>📊</text></svg>">
-  <!-- ... SEU CSS/HEAD ATUAL ... -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unificação de planilhas: QLP - Bancodoc</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    /* Estilo para a área de importação */
+    .file-drop-area {
+      border: 2px dashed #ccc;
+      border-radius: 5px;
+      padding: 20px;
+      text-align: center;
+      transition: border-color 0.3s ease;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .file-drop-area:hover {
+      border-color: #007BFF;
+    }
+    .file-drop-area input[type="file"] {
+      display: none; /* Esconde o input de arquivo padrão */
+    }
+    .file-drop-area label {
+      display: block; /* Garante que o label ocupe toda a área */
+      cursor: pointer;
+      color: #666;
+    }
+    .file-drop-area label strong {
+        display: block;
+        font-size: 1.1em;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    .file-drop-area label span {
+      font-weight: normal;
+      color: #333;
+      display: block;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    pre {
+      background-color: #eee;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    /* Estilo para o botão de voltar */
+    .back-button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: #007BFF;
+        color: white;
+        text-decoration: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    .back-button:hover {
+        background-color: #0056b3;
+    }
+  </style>
+
+<!-- Firebase compat (Auth) + Guard centralizado -->
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+<script src="guard.js"></script>
+
 </head>
 <body>
-  <!-- ... SEU CONTEÚDO ATUAL DA FERRAMENTA BDOC ... -->
-
-  <div id="userbar" style="display:none;position:fixed;left:10px;top:10px;background:#0b3bda;color:#fff;padding:6px 10px;border-radius:999px;z-index:9999;">
+  <!-- Barra do usuário (mostrada após autenticar) -->
+  <div id="userbar" style="display:none;gap:10px;align-items:center;background:#0b3bda;color:#fff;padding:8px 12px;position:fixed;left:10px;top:10px;border-radius:999px;z-index:9999">
     <span id="uemail"></span>
-    <button id="logout" style="margin-left:8px;background:#fff;color:#0b3bda;border:0;border-radius:999px;padding:4px 8px;cursor:pointer">Sair</button>
+    <button id="logout" style="all:unset;background:#fff;color:#0b3bda;padding:4px 10px;border-radius:999px;cursor:pointer;margin-left:8px">Sair</button>
   </div>
 
-  <!-- Firebase + Guard -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+<!-- Guard: exige sessão antes de exibir a página -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {'apiKey': 'AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8', 'authDomain': 'talentosbd-e4206.firebaseapp.com', 'projectId': 'talentosbd-e4206', 'storageBucket': 'talentosbd-e4206.appspot.com', 'messagingSenderId': '580727253031', 'appId': '1:580727253031:web:5363082ef0da6277788602'};
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  (async () => {
+    const wait = () => new Promise(r => {
+      const unsub = firebase.auth().onAuthStateChanged(u => { unsub(); r(u||null); });
+    });
+    const user = firebase.auth().currentUser || await wait();
+    const ret = (location.pathname.replace(/^\//,'') || 'index.html') + (location.search || '');
+    if (!user) location.replace('login.html?return=' + encodeURIComponent(ret));
+  })();
+</script>
+
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+
+<script>
+// ==== Firebase Init (Talentos) ====
+const firebaseConfig = {
+  apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
+  projectId: "talentosbd-e4206",
+  storageBucket: "talentosbd-e4206.appspot.com",
+  messagingSenderId: "580727253031",
+  appId: "1:580727253031:web:5363082ef0da6277788602",
+  measurementId: "G-S464LNX2J9"
+};
+firebase.initializeApp(firebaseConfig);
+window.fbAuth = firebase.auth();
+window.fbStore = firebase.firestore();
+window.fbStorage = firebase.storage();
+// Persistência local
+fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+// Resolve redirects (importante fora do Hosting do Firebase)
+fbAuth.getRedirectResult().catch(console.error);
+// helper
+window.onAuthReady = () => new Promise(resolve => {
+  const unsub = fbAuth.onAuthStateChanged(u => { unsub(); resolve(u || null); });
+});
+</script>
+
+<!-- Auth bar + Microsoft login -->
+<div id="auth-bar" style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:#eef3ff;border-bottom:1px solid #dbe3ff">
+  <span id="auth-user" style="opacity:.85">Desconectado</span>
+  <button id="btn-ms" style="margin-left:auto;background:#2563eb;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Entrar com Microsoft</button>
+  <button id="btn-logout" style="display:none;background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Sair</button>
+
+<script>
+// ==== Guard de Autenticação (redireciona para login se necessário) ====
+(async function(){
+  try {
+    // Espera auth pronto (se definido pelo index). Se não, usa onAuthStateChanged inline.
+    function ready(){
+      return new Promise(res => {
+        const unsub = firebase.auth().onAuthStateChanged(u => { unsub(); res(u||null); });
+      });
+    }
+    const user = firebase.auth().currentUser || await ready();
+    if (!user) {
+      const login = 'login-firebase.html?return=' + encodeURIComponent(location.pathname.split('/').pop());
+      location.replace(login);
+      return;
+    }
+    // Restringe ao domínio talentosconsultoria.com.br
+    const email = (user.email||'').toLowerCase();
+    if (!email.endsWith('@talentosconsultoria.com.br')) {
+      await firebase.auth().signOut();
+      const login = 'login-firebase.html?return=' + encodeURIComponent(location.pathname.split('/').pop());
+      location.replace(login);
+    }
+  } catch(e){ console.error('Auth guard error:', e); }
+})();
+</script>
+
+<script>
+function updateAuthBar(user){
+  const span = document.getElementById('auth-user');
+  const ms = document.getElementById('btn-ms');
+  const out = document.getElementById('btn-logout');
+  if (user){
+    span.textContent = `Olá, ${user.displayName || user.email || user.uid}`;
+    ms.style.display = 'none';
+    out.style.display = '';
+  } else {
+    span.textContent = 'Desconectado';
+    ms.style.display = '';
+    out.style.display = 'none';
+  }
+}
+fbAuth.onAuthStateChanged(updateAuthBar);
+
+document.getElementById('btn-ms').onclick = async () => {
+  const provider = new firebase.auth.OAuthProvider('microsoft.com');
+  try {
+    await fbAuth.signInWithPopup(provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+      await fbAuth.signInWithRedirect(provider);
+    } else {
+      alert(e.message);
+    }
+  }
+};
+document.getElementById('btn-logout').onclick = () => fbAuth.signOut();
+</script>
+
+  <a href="index.html" class="back-button">← Voltar para o Menu</a>
+  <div class="container">
+    <h1>Unificação de planilhas: QLP - Bancodoc</h1>
+    <p>Envie abaixo as três planilhas:</p>
+    
+    <!-- Área de importação 1 -->
+    <div class="file-drop-area">
+      <label for="admissaoFile">
+        <strong>Documentos não Depositados de Admissão</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="admissaoFileName"></span>
+      </label>
+      <input type="file" id="admissaoFile" accept=".xlsx,.csv" />
+    </div>
+    
+    <!-- Área de importação 2 -->
+    <div class="file-drop-area">
+      <label for="relatorioFile">
+        <strong>Relatório de Empregados</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="relatorioFileName"></span>
+      </label>
+      <input type="file" id="relatorioFile" accept=".xlsx,.csv" />
+    </div>
+    
+    <!-- Área de importação 3 -->
+    <div class="file-drop-area">
+      <label for="cadastroFile">
+        <strong>QLP geral</strong>
+        <br>Clique aqui para importar ou arraste o arquivo
+        <span id="cadastroFileName"></span>
+      </label>
+      <input type="file" id="cadastroFile" accept=".xlsx,.csv" />
+    </div>
+
+    <br><br>
+    <button onclick="processarArquivos()">Corrigir e Baixar Planilha</button>
+    <pre id="relatorioOutput"></pre>
+  </div>
+
   <script>
-    const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      appId: "SEU_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
+    // Adiciona event listeners para atualizar o nome do arquivo
+    document.getElementById('admissaoFile').addEventListener('change', function(e) {
+      document.getElementById('admissaoFileName').textContent = e.target.files[0].name;
+    });
+    document.getElementById('relatorioFile').addEventListener('change', function(e) {
+      document.getElementById('relatorioFileName').textContent = e.target.files[0].name;
+    });
+    document.getElementById('cadastroFile').addEventListener('change', function(e) {
+      document.getElementById('cadastroFileName').textContent = e.target.files[0].name;
+    });
 
-    const ORG_DOMAIN = "talentosconsultoria.com.br";
-    const LOGIN_PAGE = "login.html";
-
-    function pageName(){ return location.pathname.split('/').pop() || "format-bancodoc.html"; }
-    function goLogin(reason){
-      const ret = encodeURIComponent(pageName());
-      location.replace(`${LOGIN_PAGE}?return=${ret}${reason?`&reason=${reason}`:''}`);
+    // Função para normalizar texto, removendo acentos e espaços extras
+    function normalizarTexto(texto) {
+      if (typeof texto !== 'string') return '';
+      return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
     }
 
-    firebase.auth().onAuthStateChanged(async (user)=>{
-      if(!user){ goLogin("no-session"); return; }
-      const em = (user.email||"").toLowerCase();
-      if(!em.endsWith(`@${ORG_DOMAIN}`)){
-        await firebase.auth().signOut();
-        goLogin("wrong-domain");
+    // Função para normalizar CPF, removendo caracteres não numéricos e preenchendo com zeros
+    function normalizarCPF(cpf) {
+        if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
+        let numeros = String(cpf).replace(/\D/g, '');
+        return numeros.padStart(11, '0');
+    }
+    
+    // Função para converter data do formato Excel para o formato de data JavaScript
+    function excelDateToJSDate(serial) {
+      if (typeof serial !== 'number' || serial <= 0) return serial;
+
+      const utc_days  = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      const fractional_day = serial - Math.floor(serial) + 0.0000001;
+      let total_seconds = Math.floor(86400 * fractional_day);
+      const seconds = total_seconds % 60;
+      total_seconds -= seconds;
+      const minutes = total_seconds / 60 % 60;
+      total_seconds -= minutes * 60;
+      const hours = Math.floor(total_seconds / 3600);
+      const day = String(date_info.getDate()).padStart(2, '0');
+      const month = String(date_info.getMonth() + 1).padStart(2, '0');
+      const year = date_info.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    // Função para formatar o CPF com pontos e hífen
+    function formatarCPF(cpf) {
+      const numeros = String(cpf).replace(/\D/g, "");
+      
+      const cpfFormatado = numeros.padStart(11, "0");
+
+      if (cpfFormatado.length === 11) {
+        return cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      }
+      
+      return cpf;
+    }
+
+    // Função principal para processar os arquivos
+    async function processarArquivos() {
+      // Pega os arquivos de entrada
+      const admissaoInput = document.getElementById('admissaoFile').files[0];
+      const relatorioInput = document.getElementById('relatorioFile').files[0];
+      const cadastroInput = document.getElementById('cadastroFile').files[0];
+      const relatorioOutput = document.getElementById('relatorioOutput');
+      relatorioOutput.textContent = ''; // Limpa a área de relatório
+
+      // Verifica se todos os arquivos foram enviados
+      if (!admissaoInput || !relatorioInput || !cadastroInput) {
+        alert("Envie as três planilhas.");
         return;
       }
-      document.getElementById("uemail").textContent = em;
-      document.getElementById("userbar").style.display = "inline-flex";
-    });
 
-    document.getElementById("logout").addEventListener("click", async ()=>{
-      await firebase.auth().signOut();
-      goLogin("logout");
-    });
+      // Lê os arquivos e converte para JSON
+      const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
+        fileToJson(admissaoInput),
+        fileToJson(relatorioInput),
+        fileToJson(cadastroInput, { header: 1 })
+      ]);
+
+      // Verifica se os arquivos não estão vazios
+      if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
+          alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
+          return;
+      }
+
+      // -- Etapa 1: Corrigir CPFs na Planilha de Admissão com base no Relatório --
+      const admissaoHeaders = Object.keys(admissaoJson[0] || {});
+      const relatorioHeaders = Object.keys(relatorioJson[0] || {});
+
+      const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
+      const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
+      
+      // Encontra as colunas de nome e CPF nas planilhas de admissão e relatório
+      let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
+      let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("cpf") || h.includes("documento") || h.includes("registro"))];
+
+      const erros = [];
+      if (!colunaNomeAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de nome.");
+      if (!colunaCpfAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de CPF.");
+      if (!colunaNomeRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de nome.");
+      if (!colunaCpfRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de CPF.");
+
+      if (erros.length > 0) {
+        alert(erros.join("\n"));
+        return;
+      }
+
+      // Cria um mapa com nome normalizado e CPF correto do relatório
+      const mapaCpfCorreto = new Map();
+      for (const linha of relatorioJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
+        const cpf = linha[colunaCpfRelatorio]?.toString();
+        if (nomeNormalizado && cpf && !cpf.includes("*")) {
+          mapaCpfCorreto.set(nomeNormalizado, cpf);
+        }
+      }
+
+      // Atualiza os CPFs na planilha de admissão
+      let cpfsAtualizados = 0;
+      for (const linha of admissaoJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
+        if (mapaCpfCorreto.has(nomeNormalizado)) {
+          linha[colunaCpfAdmissao] = formatarCPF(mapaCpfCorreto.get(nomeNormalizado));
+          cpfsAtualizados++;
+        }
+      }
+      
+      // -- Etapa 2: Adicionar colunas de Cadastro e Admissão da 3ª planilha (QLP) --
+      const qlpData = cadastroRaw;
+      
+      // Índices de coluna para as posições A, H e P (índices 0, 7, 15)
+      const colunaIndiceCadastro = 0;
+      const colunaIndiceAdmissao = 7;
+      const colunaIndiceCpfCadastro = 15;
+      
+      // Cria um mapa com CPF normalizado e dados de cadastro e admissão
+      const mapaCadastroAdmissao = new Map();
+      for (const linha of qlpData) {
+          const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
+          const cadastroValue = linha[colunaIndiceCadastro] || '';
+          const admissaoValue = linha[colunaIndiceAdmissao] || '';
+
+          if (cpfNormalizado && cadastroValue && admissaoValue) {
+              mapaCadastroAdmissao.set(cpfNormalizado, {
+                  cadastro: cadastroValue,
+                  admissao: admissaoValue
+              });
+          }
+      }
+
+      // Encontra o índice da coluna de nome na planilha de admissão
+      const nomeColIndexAdmissao = admissaoHeaders.indexOf(colunaNomeAdmissao);
+
+      // Adiciona as novas colunas e preenche com os dados correspondentes
+      const novaPlanilhaFinal = [];
+      const cabecalhoFinal = [...admissaoHeaders];
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Admissão');
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Cadastro');
+      novaPlanilhaFinal.push(cabecalhoFinal);
+      
+      for(const linha of admissaoJson) {
+          const cpfNormalizado = normalizarCPF(linha[colunaCpfAdmissao]);
+          const dadosExtras = mapaCadastroAdmissao.get(cpfNormalizado) || { cadastro: '', admissao: '' };
+          
+          const novaLinha = [...Object.values(linha)];
+          novaLinha.splice(nomeColIndexAdmissao, 0, excelDateToJSDate(dadosExtras.admissao));
+          novaLinha.splice(nomeColIndexAdmissao, 0, dadosExtras.cadastro);
+          novaPlanilhaFinal.push(novaLinha);
+      }
+
+      // Cria a mensagem de relatório para o usuário
+      let mensagem = `✅ Processamento concluído.\n\n`;
+      mensagem += `CPFs atualizados: ${cpfsAtualizados}\n`;
+      mensagem += `Colunas de Cadastro e Admissão adicionadas.`;
+      
+      relatorioOutput.textContent = mensagem;
+
+      // Lógica para baixar o novo arquivo
+      const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
+      const novoWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
+      XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
+    }
+
+    // Função auxiliar para converter o arquivo de entrada para JSON
+    function fileToJson(file, options = {}) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        reader.onload = (e) => {
+          try {
+            let workbook;
+            if (extension === 'csv') {
+              workbook = XLSX.read(e.target.result, { type: 'string', FS: ';' });
+            } else {
+              const data = new Uint8Array(e.target.result);
+              workbook = XLSX.read(data, { type: 'array' });
+            }
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, options);
+            resolve(json);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        reader.onerror = reject;
+
+        if (extension === 'csv') {
+          reader.readAsText(file);
+        } else {
+          reader.readAsArrayBuffer(file);
+        }
+      });
+    }
   </script>
 </body>
 </html>
