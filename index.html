@@ -5,6 +5,7 @@
     OAuthProvider, signInWithRedirect
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
+  // --- Firebase config (chave certa!) ---
   const firebaseConfig = {
     apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
     authDomain: "talentosbd-e4206.firebaseapp.com",
@@ -18,43 +19,53 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
-  const params = new URLSearchParams(location.search);
-  let returnUrl = params.get("return") || "index.html";
-
-  const btn = document.getElementById("btn-ms");
-  const setBusy = (b)=>{ if(btn){ b?btn.setAttribute("disabled",""):btn.removeAttribute("disabled"); } };
-
   const provider = new OAuthProvider("microsoft.com");
-  provider.setCustomParameters({ domain_hint: "talentosconsultoria.com.br", prompt: "select_account" });
+  provider.setCustomParameters({
+    domain_hint: "talentosconsultoria.com.br",
+    prompt: "select_account"
+  });
+
+  const params = new URLSearchParams(location.search);
+  const returnUrl = params.get("return") || "index.html";
 
   async function doRedirectLogin(){
     sessionStorage.setItem("msLoginInProgress","1");
-    setBusy(true);
+    const btn = document.getElementById("btn-ms");
+    if (btn) btn.setAttribute("disabled","");
     await signInWithRedirect(auth, provider);
   }
 
-  if (btn) btn.addEventListener("click", (e)=>{ e.preventDefault(); doRedirectLogin(); });
-
-  try {
-    setBusy(true);
-    const res = await getRedirectResult(auth);
-    if (res?.user) {
-      sessionStorage.removeItem("msLoginInProgress");
-      location.replace(returnUrl);
-    } else {
-      onAuthStateChanged(auth, (user)=>{
-        if (user) {
-          sessionStorage.removeItem("msLoginInProgress");
-          location.replace(returnUrl);
-        } else {
-          const inProgress = sessionStorage.getItem("msLoginInProgress")==="1";
-          if (!inProgress) doRedirectLogin(); else setBusy(false);
-        }
+  // Garante que o DOM existe antes de buscar o botão
+  window.addEventListener("DOMContentLoaded", async () => {
+    const btn = document.getElementById("btn-ms");
+    if (btn) {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        doRedirectLogin();
       });
     }
-  } catch (e) {
-    console.error(e);
-    sessionStorage.removeItem("msLoginInProgress");
-    setBusy(false);
-  }
+
+    try {
+      const res = await getRedirectResult(auth);
+      if (res?.user) {
+        sessionStorage.removeItem("msLoginInProgress");
+        location.replace(returnUrl);
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+      sessionStorage.removeItem("msLoginInProgress");
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        sessionStorage.removeItem("msLoginInProgress");
+        location.replace(returnUrl);
+      } else {
+        // Se quiser login automático sem botão:
+        // doRedirectLogin();
+        // Caso prefira usar botão, deixe só ele visível e não force o redirect aqui.
+      }
+    });
+  });
 </script>
