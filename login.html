@@ -73,5 +73,35 @@
       }
     });
   </script>
+
+<script>
+  // Init Firebase (compat)
+  (function() {
+    const firebaseConfig = {'apiKey': 'AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8', 'authDomain': 'talentosbd-e4206.firebaseapp.com', 'projectId': 'talentosbd-e4206', 'storageBucket': 'talentosbd-e4206.appspot.com', 'messagingSenderId': '580727253031', 'appId': '1:580727253031:web:5363082ef0da6277788602'};
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    // Força tenant pelo domínio; se der AADSTS90002, podemos remover esta linha
+    provider.setCustomParameters({ tenant: 'talentosconsultoria.com.br' });
+
+    const goBack = () => {
+      const ret = new URLSearchParams(location.search).get('return') || 'index.html';
+      location.replace(ret);
+    };
+
+    auth.onAuthStateChanged(async (u) => {
+      try {
+        if (u) { goBack(); return; }
+        const res = await auth.getRedirectResult();
+        if (res && res.user) { goBack(); return; }
+        await auth.signInWithRedirect(provider);
+      } catch(e) {
+        console.error('Auth error:', e);
+        // Opcional: mostrar erro na tela se quiser
+      }
+    });
+  })();
+</script>
+
 </body>
 </html>
