@@ -42,14 +42,22 @@
     const auth = firebase.auth();
     const provider = new firebase.auth.OAuthProvider('microsoft.com');
     // Fixa o tenant para evitar /common
-    provider.setCustomParameters({ tenant: 'ca0b0e9f-94ad-4a26-b291-fa90af7491ee' });
+    provider.setCustomParameters({ tenant: 'cba0be9f-94ad-4a26-b291-fa90af7491ee' });
 
     const msg = (t) => document.getElementById('msg').textContent = t ?? '';
 
     function goHome() {
-      const ret = new URLSearchParams(location.search).get('return') || 'index.html';
-      // replace evita voltar para a tela de login no histórico
-      location.replace(ret);
+      const sp = new URLSearchParams(location.search);
+      const retRaw = sp.get('return') || 'index.html';
+      let target = 'index.html';
+      try {
+        // Permite apenas mesma origem (mesmo domínio)
+        const u = new URL(retRaw, location.href);
+        if (u.origin === location.origin) {
+          target = u.pathname + u.search + u.hash;
+        }
+      } catch (_) { /* ignora e usa o default */ }
+      location.replace(target);
     }
 
     auth.onAuthStateChanged(async (user) => {
