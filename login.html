@@ -1,107 +1,106 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Acesso Talentos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:#eef3ff;margin:0;
-         display:flex;min-height:100vh;align-items:center;justify-content:center}
-    .card{background:#fff;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.08);
-          width:90%;max-width:520px;padding:36px;text-align:center}
-    h1{margin:0 0 10px;color:#1e40af}
-    p{margin:0 0 14px;color:#475569}
-    .muted{color:#64748b;font-size:14px}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#eef3ff;margin:0;
+         display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{background:#fff;max-width:520px;width:92%;padding:32px 28px;border-radius:18px;
+          box-shadow:0 20px 50px rgba(0,0,0,.12)}
+    h1{font-size:28px;margin:0 0 8px;color:#1f3bb3}
+    p{color:#3b4250;margin:0 0 18px}
+    .hint{font-size:12px;color:#5c6b8a;margin-top:12px}
+    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;
+         font-weight:700;cursor:pointer}
+    .hidden{display:none}
+    .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:8px;margin-top:10px;font-size:13px}
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 </head>
 <body>
   <div class="card">
     <h1>Acesso Talentos</h1>
-    <p>Redirecionando para login corporativo…</p>
-    <p class="muted" id="msg"></p>
+    <p>Você será redirecionado para entrar com sua conta Microsoft.</p>
+    <button id="loginBtn" class="btn hidden">Entrar com Microsoft</button>
+    <div id="err" class="err hidden"></div>
+    <div class="hint">Se não redirecionar automaticamente, clique no botão acima.</div>
   </div>
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script>
-    // Config do seu projeto
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5363082ef0da6277788602"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+<script>
+(function(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+    authDomain: "talentosbd-e4206.firebaseapp.com",
+    projectId: "talentosbd-e4206",
+    storageBucket: "talentosbd-e4206.appspot.com",
+    messagingSenderId: "580727253031",
+    appId: "1:580727253031:web:5363082ef0da6277788602"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const provider = new firebase.auth.OAuthProvider('microsoft.com');
+  provider.setCustomParameters({ domain_hint: 'talentosconsultoria.com.br' });
 
-    const auth = firebase.auth();
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    // Fixa o tenant para evitar /common
-    provider.setCustomParameters({ tenant: 'ca0b0e9f-94ad-4a26-b291-fa90af7491ee' });
+  const qs = new URLSearchParams(location.search);
+  const returnTo = qs.get('return') || 'index.html';
+  sessionStorage.setItem('returnTo', returnTo);
 
-    const msg = (t) => document.getElementById('msg').textContent = t ?? '';
+  const $btn = document.getElementById('loginBtn');
+  const $err = document.getElementById('err');
+  const showBtn = ()=> $btn.classList.remove('hidden');
+  const showErr = (msg)=>{ $err.textContent = msg; $err.classList.remove('hidden'); showBtn(); };
 
-    function goHome() {
-      const ret = new URLSearchParams(location.search).get('return') || 'index.html';
-      // replace evita voltar para a tela de login no histórico
+  const KEY = 'msLoginInProgress';
+
+  auth.onAuthStateChanged(function(user){
+    if (user){
+      const ret = sessionStorage.getItem('returnTo') || 'index.html';
       location.replace(ret);
     }
+  });
 
-    auth.onAuthStateChanged(async (user) => {
-      try {
-        if (user) {                // Já está logado (voltou do redirect)
-          goHome();
-          return;
-        }
-        // Verifica se existe resultado do redirect já pronto
-        const res = await auth.getRedirectResult();
-        if (res && res.user) {     // Login acabou de acontecer
-          goHome();
-          return;
-        }
-        // Se não veio usuário ainda, inicia o login por redirect automaticamente
-        msg('Abrindo provedores da Microsoft…');
-        await auth.signInWithRedirect(provider);
-      } catch (e) {
-        console.error(e);
-        msg('Erro ao autenticar: ' + (e && e.message ? e.message : e));
+  auth.getRedirectResult()
+    .then(function(result){
+      if (result && result.user){
+        sessionStorage.removeItem(KEY);
+        const ret = sessionStorage.getItem('returnTo') || 'index.html';
+        location.replace(ret);
+        return;
       }
+      maybeStart();
+    })
+    .catch(function(e){
+      sessionStorage.removeItem(KEY);
+      showErr(e && e.message ? e.message : 'Falha ao iniciar login.');
     });
-  </script>
 
-<script>
-  // Init Firebase (compat)
-  (function() {
-    const firebaseConfig = {'apiKey': 'AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8', 'authDomain': 'talentosbd-e4206.firebaseapp.com', 'projectId': 'talentosbd-e4206', 'storageBucket': 'talentosbd-e4206.appspot.com', 'messagingSenderId': '580727253031', 'appId': '1:580727253031:web:5363082ef0da6277788602'};
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    // Força tenant pelo domínio; se der AADSTS90002, podemos remover esta linha
-    provider.setCustomParameters({ tenant: 'talentosconsultoria.com.br' });
+  function start(){
+    try{
+      sessionStorage.setItem(KEY,'1');
+      auth.signInWithRedirect(provider);
+    }catch(e){
+      sessionStorage.removeItem(KEY);
+      showErr(e.message || 'Erro ao redirecionar para login.');
+    }
+  }
 
-    const goBack = () => {
-      const ret = new URLSearchParams(location.search).get('return') || 'index.html';
-      location.replace(ret);
-    };
+  function maybeStart(){
+    const inProgress = sessionStorage.getItem(KEY) === '1';
+    if (!inProgress){
+      setTimeout(start, 150);
+    }else{
+      showBtn();
+    }
+  }
 
-    auth.onAuthStateChanged(async (u) => {
-      try {
-        if (u) { goBack(); return; }
-        const res = await auth.getRedirectResult();
-        if (res && res.user) { goBack(); return; }
-        await auth.signInWithRedirect(provider);
-      } catch(e) {
-        console.error('Auth error:', e);
-        // Opcional: mostrar erro na tela se quiser
-      }
-    });
-  })();
+  $btn.addEventListener('click', start);
+})();
 </script>
-
 </body>
 </html>
