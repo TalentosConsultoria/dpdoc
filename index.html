@@ -1,109 +1,79 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Acesso Talentos</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Central de Ferramentas - Talentos</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><text y='1em' font-size='90'>🔐</text></svg>">
   <style>
-    body{margin:0;background:#eef3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    .card{max-width:560px;margin:18vh auto;background:#fff;padding:36px 28px;border-radius:16px;box-shadow:0 25px 60px rgba(0,40,140,.15)}
-    h1{font-size:28px;color:#1f3bb3;margin:0 0 12px}
-    p{margin:0 0 18px;color:#334}
-    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer}
-    .muted{color:#667}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:#eff3ff;}
+    .wrap{max-width:980px;margin:40px auto;padding:24px;background:#fff;border-radius:18px;box-shadow:0 10px 35px rgba(0,20,120,.12)}
+    .title{font-size:28px;font-weight:800;margin:0 0 6px;color:#1f3aad}
+    .muted{color:#536087;margin:0 0 18px}
+    #userbar{display:none;gap:10px;align-items:center;background:#0b3bda;color:#fff;padding:8px 12px;border-bottom-left-radius:10px;border-bottom-right-radius:10px}
+    #logout{all:unset;background:#fff;color:#0b3bda;font-weight:600;padding:6px 10px;border-radius:999px;cursor:pointer}
+    .links a{display:inline-block;margin:8px 10px 0 0;padding:10px 14px;background:#0b3bda;color:#fff;border-radius:10px;text-decoration:none}
+    .links a:hover{opacity:.9}
   </style>
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signInWithRedirect,
-      getRedirectResult,
-      OAuthProvider
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-
-    // ---- CONFIG FIREBASE (a mesma do seu projeto) ----
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7sgoCoNj3nkfUG3mkz0WEpRmH3K8",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      appId: "1:xxxxxxxxxxxx:web:xxxxxxxxxxxxxx" // opcional
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    // ---- LÊ o destino de retorno (ex.: ?return=index.html) ----
-    const url = new URL(window.location.href);
-    const returnTo = url.searchParams.get("return") || "index.html";
-    sessionStorage.setItem("returnAfterLogin", returnTo);
-
-    // ---- Provider Microsoft travado no seu tenant ----
-    const provider = new OAuthProvider('microsoft.com');
-    provider.setCustomParameters({
-      // Tenant do seu print: cba0be9f-94ad-4a26-b291-fa90af7491ee
-      tenant: "cba0be9f-94ad-4a26-b291-fa90af7491ee"
-    });
-
-    // ---- GUARDAS CONTRA LOOP ----
-    // 1) Só dispara redirect se ainda não começou
-    async function ensureSignIn() {
-      try {
-        // Se acabamos de voltar do Microsoft, o Firebase resolve aqui
-        await getRedirectResult(auth);
-      } catch(e) {
-        console.warn("getRedirectResult:", e);
-      }
-
-      const user = auth.currentUser;
-      if (user) {
-        // Já autenticado -> segue para o destino
-        const dest = sessionStorage.getItem("returnAfterLogin") || "index.html";
-        // segurança básica: não deixa sair do mesmo domínio
-        if (!/^[a-z0-9_\-./]+$/i.test(dest)) {
-          window.location.href = "index.html";
-        } else {
-          window.location.href = dest;
-        }
-        return;
-      }
-
-      // Se não tem user E ainda não iniciamos o redirect nesta aba, inicia
-      if (!sessionStorage.getItem("redirectStarted")) {
-        sessionStorage.setItem("redirectStarted", "1");
-        signInWithRedirect(auth, provider);
-      }
-      // Se já iniciou, aguardamos voltar do handler (a página mostra o botão como fallback)
-    }
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const dest = sessionStorage.getItem("returnAfterLogin") || "index.html";
-        if (!/^[a-z0-9_\-./]+$/i.test(dest)) {
-          window.location.href = "index.html";
-        } else {
-          window.location.href = dest;
-        }
-      }
-    });
-
-    // dispara o fluxo quando a página carrega
-    window.addEventListener("load", ensureSignIn);
-
-    // Botão de fallback manual
-    window.startLogin = () => {
-      sessionStorage.setItem("redirectStarted", "1");
-      signInWithRedirect(auth, provider);
-    };
-  </script>
 </head>
 <body>
-  <div class="card">
-    <h1>Acesso Talentos</h1>
-    <p>Redirecionando para login corporativo…</p>
-    <p class="muted">Se não redirecionar automaticamente, clique no botão abaixo.</p>
-    <br />
-    <button class="btn" onclick="startLogin()">Entrar com Microsoft</button>
+  <div id="userbar">
+    <span id="uemail"></span>
+    <button id="logout">Sair</button>
   </div>
+
+  <main class="wrap">
+    <h1 class="title">Bem-vindo(a) à sua Central de Ferramentas</h1>
+    <p class="muted">Escolha uma das ferramentas abaixo. O acesso é restrito a contas @talentosconsultoria.com.br.</p>
+
+    <div class="links">
+      <a href="qlp-format.html">QLP</a>
+      <a href="pdf-tool.html">PDF</a>
+      <a href="format-bancodoc.html">Bdoc</a>
+    </div>
+  </main>
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+  <script>
+    // TODO: substitua pelos dados do seu projeto (Console Firebase > Configurações > SDK Web):
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "talentosbd-e4206.firebaseapp.com",
+      projectId: "talentosbd-e4206",
+      appId: "SEU_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const ORG_DOMAIN = "talentosconsultoria.com.br";
+    const LOGIN_PAGE = "login.html";
+
+    function pageName(){ return location.pathname.split('/').pop() || "index.html"; }
+    function goLogin(reason){
+      const ret = encodeURIComponent(pageName());
+      location.replace(`${LOGIN_PAGE}?return=${ret}${reason?`&reason=${reason}`:''}`);
+    }
+
+    // Guard: exige sessão válida + email do domínio corporativo
+    firebase.auth().onAuthStateChanged(async (user)=>{
+      if(!user){ goLogin("no-session"); return; }
+      const em = (user.email||"").toLowerCase();
+      if(!em.endsWith(`@${ORG_DOMAIN}`)){
+        await firebase.auth().signOut();
+        goLogin("wrong-domain");
+        return;
+      }
+      // Sessão OK -> exibe barra de usuário
+      document.getElementById("uemail").textContent = em;
+      document.getElementById("userbar").style.display = "flex";
+    });
+
+    // Sair
+    document.getElementById("logout").addEventListener("click", async ()=>{
+      await firebase.auth().signOut();
+      goLogin("logout");
+    });
+  </script>
 </body>
 </html>
