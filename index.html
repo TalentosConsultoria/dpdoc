@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Menu Principal - Talentos Consultoria</title>
 
+  <!-- Favicon "vazio" para evitar 404 -->
+  <link rel="icon" href="data:," />
+
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -26,41 +29,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Favicon (opcional; coloque um arquivo favicon.ico na raiz) -->
-  <link rel="icon" href="/favicon.ico">
-
-  <!-- Firebase (compat para manter a mesma API do seu login) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
-  <!-- Seu firebaseConfig (o mesmo do login) -->
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script>
-    // Substitua por seu config caso tenha mudado
+    // Config deve ser idêntica ao login.html
     const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7sgpCoN3jnkfUG3mkZ0WEpmkH3kB8",
+      apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
       authDomain: "talentosbd-e4206.firebaseapp.com",
       projectId: "talentosbd-e4206",
       storageBucket: "talentosbd-e4206.appspot.com",
       messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5363802efd0a6277788602",
-      measurementId: "G-S46ALNX2J9"
+      appId: "1:580727253031:web:5363082ef0da6277788602"
     };
-    // Evita reinicializar se já estiver
-    if (firebase.apps?.length === 0) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    if (!window.firebase?.apps?.length) { firebase.initializeApp(firebaseConfig); }
+    // Evita flash antes de saber se está logado
+    document.addEventListener('DOMContentLoaded', () => { document.getElementById('app').style.display = 'none'; });
   </script>
 
-  <style>
-    /* evita flash antes da auth */
-    #app { display:none; }
-  </style>
+  <style>#app{display:none}</style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen font-sans">
-
-  <!-- TUDO que aparece depois do login fica dentro de #app -->
   <div id="app">
-    <!-- Header -->
     <header class="bg-white shadow-md p-4 sticky top-0 z-50">
       <div class="container mx-auto flex justify-between items-center">
         <a href="index.html" class="flex items-center space-x-2">
@@ -68,11 +58,8 @@
                alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
           <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
         </a>
-
-        <!-- Navegação -->
         <nav class="relative flex items-center gap-4">
           <span class="text-sm text-gray-500">Olá, <strong id="auth-user">carregando...</strong></span>
-
           <button id="tools-dropdown-button"
                   class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
             <span>Ferramentas</span>
@@ -80,7 +67,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-
           <div id="tools-dropdown-menu"
                class="absolute right-0 mt-10 w-48 bg-white rounded-md shadow-lg py-1 hidden">
             <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
@@ -91,7 +77,6 @@
       </div>
     </header>
 
-    <!-- Main -->
     <main class="flex-grow flex justify-center items-center p-4">
       <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
         <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
@@ -101,59 +86,44 @@
       </div>
     </main>
 
-    <!-- Rodapé -->
     <footer class="bg-gray-800 text-white text-center p-4">
       <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
     </footer>
   </div>
 
-  <!-- Guard de autenticação + dropdown -->
+  <!-- Guard + UI init -->
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const app = document.getElementById('app');
+      const auth = firebase.auth();
 
-      function waitAuth() {
-        return new Promise(resolve => {
-          const off = firebase.auth().onAuthStateChanged(u => { off(); resolve(u || null); });
-        });
+      async function waitUser(){
+        return auth.currentUser || await new Promise(r => { const off = auth.onAuthStateChanged(u => (off(), r(u||null))); });
       }
 
-      (async () => {
-        try {
-          const user = firebase.auth().currentUser || await waitAuth();
-
-          if (!user) {
-            // não logado -> manda pro login e volta pro index
-            const ret = encodeURIComponent('index.html');
-            location.replace('login.html?return=' + ret);
-            return;
-          }
-
-          // popular nome
-          const span = document.getElementById('auth-user');
-          if (span) span.textContent = user.displayName || user.email || 'Usuário';
-
-          // mostrar UI
-          app.style.display = '';
-        } catch (e) {
-          console.error('Auth init error:', e);
-          // em caso de erro, ainda mostra a UI pra você ver o console
-          app.style.display = '';
+      try{
+        const user = await waitUser();
+        if (!user){
+          location.replace('login.html?return=' + encodeURIComponent('index.html'));
+          return;
         }
-      })();
+        // mostra nome
+        const span = document.getElementById('auth-user');
+        if (span) span.textContent = user.displayName || user.email || 'Usuário';
+        // exibe app
+        app.style.display = '';
+      }catch(e){
+        console.error(e);
+        app.style.display='';
+      }
 
-      // Dropdown
+      // Dropdown seguro
       const btn = document.getElementById('tools-dropdown-button');
       const menu = document.getElementById('tools-dropdown-menu');
-      if (btn && menu) {
-        btn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          menu.classList.toggle('hidden');
-        });
+      if (btn && menu){
+        btn.addEventListener('click', (ev) => { ev.stopPropagation(); menu.classList.toggle('hidden'); });
         document.addEventListener('click', (ev) => {
-          if (!btn.contains(ev.target) && !menu.contains(ev.target)) {
-            menu.classList.add('hidden');
-          }
+          if (!btn.contains(ev.target) && !menu.contains(ev.target)) menu.classList.add('hidden');
         });
       }
     });

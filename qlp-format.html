@@ -161,6 +161,39 @@
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- Firebase Guard: exige login antes de acessar esta página -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script>
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+    authDomain: "talentosbd-e4206.firebaseapp.com",
+    projectId: "talentosbd-e4206",
+    storageBucket: "talentosbd-e4206.appspot.com",
+    messagingSenderId: "580727253031",
+    appId: "1:580727253031:web:5363082ef0da6277788602"
+  };
+
+  if (!window.firebase?.apps?.length) { firebase.initializeApp(firebaseConfig); }
+  (async () => {
+    const auth = firebase.auth();
+    const user = auth.currentUser || await new Promise(r => { const off = auth.onAuthStateChanged(u => (off(), r(u||null))); });
+    if (!user) {
+      const ret = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.replace('login.html?return=' + ret);
+      return;
+    }
+    // Restringe ao domínio corporativo
+    const email = (user.email||'').toLowerCase();
+    if (!email.endsWith('@talentosconsultoria.com.br')) {
+      await auth.signOut();
+      const ret = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.replace('login.html?return=' + ret);
+    }
+  })().catch(console.error);
+</script>
 </head>
 <body>
 <!-- Guard: exige sessão antes de exibir a página -->
