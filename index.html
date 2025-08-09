@@ -1,71 +1,162 @@
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import {
-    getAuth, onAuthStateChanged, getRedirectResult,
-    OAuthProvider, signInWithRedirect
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Menu Principal - Talentos Consultoria</title>
 
-  // --- Firebase config (chave certa!) ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-    authDomain: "talentosbd-e4206.firebaseapp.com",
-    projectId: "talentosbd-e4206",
-    storageBucket: "talentosbd-e4206.appspot.com",
-    messagingSenderId: "580727253031",
-    appId: "1:580727253031:web:5363082ef0da6277788602",
-    measurementId: "G-S464LNX2J9"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  const provider = new OAuthProvider("microsoft.com");
-  provider.setCustomParameters({
-    domain_hint: "talentosconsultoria.com.br",
-    prompt: "select_account"
-  });
-
-  const params = new URLSearchParams(location.search);
-  const returnUrl = params.get("return") || "index.html";
-
-  async function doRedirectLogin(){
-    sessionStorage.setItem("msLoginInProgress","1");
-    const btn = document.getElementById("btn-ms");
-    if (btn) btn.setAttribute("disabled","");
-    await signInWithRedirect(auth, provider);
-  }
-
-  // Garante que o DOM existe antes de buscar o botão
-  window.addEventListener("DOMContentLoaded", async () => {
-    const btn = document.getElementById("btn-ms");
-    if (btn) {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        doRedirectLogin();
-      });
-    }
-
-    try {
-      const res = await getRedirectResult(auth);
-      if (res?.user) {
-        sessionStorage.removeItem("msLoginInProgress");
-        location.replace(returnUrl);
-        return;
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'] },
+          colors: {
+            primary: '#004aad',
+            secondary: '#196dff',
+            background: '#f1f5f9',
+            card: '#ffffff',
+          }
+        }
       }
-    } catch (e) {
-      console.error(e);
-      sessionStorage.removeItem("msLoginInProgress");
     }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        sessionStorage.removeItem("msLoginInProgress");
-        location.replace(returnUrl);
-      } else {
-        // Se quiser login automático sem botão:
-        // doRedirectLogin();
-        // Caso prefira usar botão, deixe só ele visível e não force o redirect aqui.
+  <!-- Favicon (opcional; coloque um arquivo favicon.ico na raiz) -->
+  <link rel="icon" href="/favicon.ico">
+
+  <!-- Firebase (compat para manter a mesma API do seu login) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <!-- Seu firebaseConfig (o mesmo do login) -->
+  <script>
+    // Substitua por seu config caso tenha mudado
+    const firebaseConfig = {
+      apiKey: "AIzaSyAL8t7sgpCoN3jnkfUG3mkZ0WEpmkH3kB8",
+      authDomain: "talentosbd-e4206.firebaseapp.com",
+      projectId: "talentosbd-e4206",
+      storageBucket: "talentosbd-e4206.appspot.com",
+      messagingSenderId: "580727253031",
+      appId: "1:580727253031:web:5363802efd0a6277788602",
+      measurementId: "G-S46ALNX2J9"
+    };
+    // Evita reinicializar se já estiver
+    if (firebase.apps?.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+    }
+  </script>
+
+  <style>
+    /* evita flash antes da auth */
+    #app { display:none; }
+  </style>
+</head>
+<body class="bg-gray-100 flex flex-col min-h-screen font-sans">
+
+  <!-- TUDO que aparece depois do login fica dentro de #app -->
+  <div id="app">
+    <!-- Header -->
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+      <div class="container mx-auto flex justify-between items-center">
+        <a href="index.html" class="flex items-center space-x-2">
+          <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png"
+               alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+          <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+        </a>
+
+        <!-- Navegação -->
+        <nav class="relative flex items-center gap-4">
+          <span class="text-sm text-gray-500">Olá, <strong id="auth-user">carregando...</strong></span>
+
+          <button id="tools-dropdown-button"
+                  class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+            <span>Ferramentas</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <div id="tools-dropdown-menu"
+               class="absolute right-0 mt-10 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+            <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
+            <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
+            <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-grow flex justify-center items-center p-4">
+      <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
+        <p class="text-md md:text-lg text-gray-600">
+          Utilize os links acima para acessar as ferramentas que você precisa.
+        </p>
+      </div>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-gray-800 text-white text-center p-4">
+      <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
+    </footer>
+  </div>
+
+  <!-- Guard de autenticação + dropdown -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = document.getElementById('app');
+
+      function waitAuth() {
+        return new Promise(resolve => {
+          const off = firebase.auth().onAuthStateChanged(u => { off(); resolve(u || null); });
+        });
+      }
+
+      (async () => {
+        try {
+          const user = firebase.auth().currentUser || await waitAuth();
+
+          if (!user) {
+            // não logado -> manda pro login e volta pro index
+            const ret = encodeURIComponent('index.html');
+            location.replace('login.html?return=' + ret);
+            return;
+          }
+
+          // popular nome
+          const span = document.getElementById('auth-user');
+          if (span) span.textContent = user.displayName || user.email || 'Usuário';
+
+          // mostrar UI
+          app.style.display = '';
+        } catch (e) {
+          console.error('Auth init error:', e);
+          // em caso de erro, ainda mostra a UI pra você ver o console
+          app.style.display = '';
+        }
+      })();
+
+      // Dropdown
+      const btn = document.getElementById('tools-dropdown-button');
+      const menu = document.getElementById('tools-dropdown-menu');
+      if (btn && menu) {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          menu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (ev) => {
+          if (!btn.contains(ev.target) && !menu.contains(ev.target)) {
+            menu.classList.add('hidden');
+          }
+        });
       }
     });
-  });
-</script>
+  </script>
+</body>
+</html>
