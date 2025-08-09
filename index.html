@@ -32,6 +32,31 @@
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen font-sans">
 
+<!-- Guard mínimo: carrega Firebase e redireciona para login.html se não autenticado -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+    authDomain: "talentosbd-e4206.firebaseapp.com",
+    projectId: "talentosbd-e4206",
+    storageBucket: "talentosbd-e4206.appspot.com",
+    messagingSenderId: "580727253031",
+    appId: "1:580727253031:web:5363082ef0da6277788602"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  (async () => {
+    const wait = () => new Promise(r => {
+      const u = firebase.auth().onAuthStateChanged(x => { u(); r(x||null); });
+    });
+    const user = firebase.auth().currentUser || await wait();
+    const path = location.pathname.replace(/^\//,'');
+    const returnTo = path && path !== 'login.html' ? path : 'index.html';
+    if (!user) location.replace('login.html?return=' + encodeURIComponent(returnTo));
+  })();
+</script>
+
+
     <!-- Header / Navbar com a logo e os links no canto superior direito -->
     <header class="bg-white shadow-md p-4 sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
