@@ -2,83 +2,75 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Acesso Talentos Consultoria</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acesso Talentos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    @keyframes fade-in-down { 0%{opacity:0;transform:translateY(-20px)} 100%{opacity:1;transform:translateY(0)} }
-    @keyframes fade-in-up { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
-    .animate-fade-in-down{animation:fade-in-down .5s ease-out forwards}
-    .animate-fade-in-up{animation:fade-in-up .5s ease-out forwards}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:#eef3ff;margin:0;
+         display:flex;min-height:100vh;align-items:center;justify-content:center}
+    .card{background:#fff;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.08);
+          width:90%;max-width:520px;padding:36px;text-align:center}
+    h1{margin:0 0 10px;color:#1e40af}
+    p{margin:0 0 14px;color:#475569}
+    .muted{color:#64748b;font-size:14px}
   </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Acesso Talentos</h1>
+    <p>Redirecionando para login corporativo…</p>
+    <p class="muted" id="msg"></p>
+  </div>
+
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script>
+    // Config do seu projeto
     const firebaseConfig = {
       apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
       authDomain: "talentosbd-e4206.firebaseapp.com",
       projectId: "talentosbd-e4206",
       storageBucket: "talentosbd-e4206.appspot.com",
       messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5363082ef0da6277788602",
-      measurementId: "G-S464LNX2J9"
+      appId: "1:580727253031:web:5363082ef0da6277788602"
     };
-    firebase.initializeApp(firebaseConfig);
-    const fbAuth = firebase.auth();
-    fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-  </script>
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    const el = document.getElementById('app');
-    const params = new URLSearchParams(location.search);
-    const returnUrl = params.get('return') || 'index.html';
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-    function render() {
-      el.innerHTML = `
-      <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div class="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center border">
-          <h2 class="text-4xl font-extrabold text-blue-700 mb-4 animate-fade-in-down">Acesso Talentos</h2>
-          <p class="text-lg text-gray-700 mb-6 animate-fade-in-up">Entre com sua conta Microsoft</p>
-          <button id="login" class="px-6 py-3 bg-blue-600 text-white rounded-lg">Entrar com Microsoft</button>
-          <div id="err" class="mt-4 text-red-600"></div>
-        </div>
-      </div>`;
-      document.getElementById('login').onclick = startLogin;
+    const auth = firebase.auth();
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    // Fixa o tenant para evitar /common
+    provider.setCustomParameters({ tenant: 'ca0b0e9f-94ad-4a26-b291-fa90af7491ee' });
+
+    const msg = (t) => document.getElementById('msg').textContent = t ?? '';
+
+    function goHome() {
+      const ret = new URLSearchParams(location.search).get('return') || 'index.html';
+      // replace evita voltar para a tela de login no histórico
+      location.replace(ret);
     }
 
-    async function startLogin(){
-      const provider = new firebase.auth.OAuthProvider('microsoft.com')
-  ;provider.setCustomParameters({ tenant: 'talentosconsultoria.com.br' });
+    auth.onAuthStateChanged(async (user) => {
       try {
-        await fbAuth.signInWithPopup(provider);
-      } catch (e) {
-        if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
-          await fbAuth.signInWithRedirect(provider);
-        } else {
-          document.getElementById('err').textContent = e.message || 'Falha ao autenticar.';
+        if (user) {                // Já está logado (voltou do redirect)
+          goHome();
+          return;
         }
+        // Verifica se existe resultado do redirect já pronto
+        const res = await auth.getRedirectResult();
+        if (res && res.user) {     // Login acabou de acontecer
+          goHome();
+          return;
+        }
+        // Se não veio usuário ainda, inicia o login por redirect automaticamente
+        msg('Abrindo provedores da Microsoft…');
+        await auth.signInWithRedirect(provider);
+      } catch (e) {
+        console.error(e);
+        msg('Erro ao autenticar: ' + (e && e.message ? e.message : e));
       }
-    }
-
-    function goBack(u){
-      // domínio permitido
-      const email = (u.email||'').toLowerCase();
-      if (!email.endsWith('@talentosconsultoria.com.br')) {
-        fbAuth.signOut().then(()=>{
-          document.getElementById('err').textContent = 'Acesso permitido apenas para @talentosconsultoria.com.br';
-        });
-        return;
-      }
-      location.replace(returnUrl);
-    }
-
-    fbAuth.getRedirectResult().catch(()=>{}).finally(()=>{
-      const u = fbAuth.currentUser;
-      if (u) goBack(u); else render();
     });
   </script>
 </body>
