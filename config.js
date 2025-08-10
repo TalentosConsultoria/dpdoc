@@ -1,4 +1,5 @@
 (function (global) {
+  // Firebase config REAL - Talentos (talentosbd-e4206)
   const firebaseConfig = {
     apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
     authDomain: "talentosbd-e4206.firebaseapp.com",
@@ -12,8 +13,13 @@
   if (!global.firebase) {
     console.error("Firebase SDK não carregado. Inclua firebase-app-compat e firebase-auth-compat antes de config.js");
   } else {
-    if ((firebase.apps && firebase.apps.length === 0) or (firebase.getApps && firebase.getApps().length === 0)) {
-      firebase.initializeApp(firebaseConfig);
+    try {
+      // Inicializa apenas se não houver app inicializado
+      if ((firebase.apps && firebase.apps.length === 0) || (firebase.getApps && firebase.getApps().length === 0)) {
+        firebase.initializeApp(firebaseConfig);
+      }
+    } catch (e) {
+      console.error("Falha ao inicializar Firebase App:", e);
     }
   }
 
@@ -24,5 +30,6 @@
     ALLOWED_ORIGINS_DEBUG: []
   };
 
+  // Sem placeholders
   global.__TalentosHasPlaceholderConfig = function() { return false; };
 })(window);
