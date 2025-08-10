@@ -1,105 +1,131 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Acesso Talentos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><text y='1em' font-size='90'>🔐</text></svg>">
   <style>
-    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#eef3ff;margin:0;
-         display:flex;align-items:center;justify-content:center;min-height:100vh}
-    .card{background:#fff;max-width:520px;width:92%;padding:32px 28px;border-radius:18px;
-          box-shadow:0 20px 50px rgba(0,0,0,.12)}
-    h1{font-size:28px;margin:0 0 8px;color:#1f3bb3}
-    p{color:#3b4250;margin:0 0 18px}
-    .hint{font-size:12px;color:#5c6b8a;margin-top:12px}
-    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;
-         font-weight:700;cursor:pointer}
-    .hidden{display:none}
-    .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:8px;margin-top:10px;font-size:13px}
+    body{margin:0;background:#eef3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
+    .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
+    .card{background:#fff;width:min(560px,92vw);padding:30px 26px;border-radius:16px;box-shadow:0 20px 60px rgba(0,40,140,.15)}
+    h1{margin:0 0 8px;font-size:28px;color:#1f3aad}
+    p{margin:0 0 18px;color:#334}
+    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer}
+    .hint{color:#64748b;font-size:12px;margin-top:10px}
+    .err{margin-top:12px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:10px;display:none;white-space:pre-wrap}
   </style>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <div class="card">
-    <h1>Acesso Talentos</h1>
-    <p>Você será redirecionado para entrar com sua conta Microsoft.</p>
-    <button id="loginBtn" class="btn hidden">Entrar com Microsoft</button>
-    <div id="err" class="err hidden"></div>
-    <div class="hint">Se não redirecionar automaticamente, clique no botão acima.</div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Acesso Talentos</h1>
+      <p id="status">Redirecionando para login corporativo…</p>
+      <button id="btnLogin" class="btn" style="display:none">Entrar com Microsoft</button>
+      <div class="hint">Se não redirecionar automaticamente, clique no botão.</div>
+      <div id="err" class="err"></div>
+    </div>
   </div>
 
 <script>
-(function(){
-  const firebaseConfig = {
-    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-    authDomain: "talentosbd-e4206.firebaseapp.com",
-    projectId: "talentosbd-e4206",
-    storageBucket: "talentosbd-e4206.appspot.com",
-    messagingSenderId: "580727253031",
-    appId: "1:580727253031:web:5363082ef0da6277788602"
-  };
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const provider = new firebase.auth.OAuthProvider('microsoft.com');
-  provider.setCustomParameters({ domain_hint: 'talentosconsultoria.com.br' });
+// ====== Firebase config — igual ao guard.js ======
+const firebaseConfig = {
+  apiKey: "AIzaSyAL8t7sgoCoNj3nkfUG3mkz0WEpRmH3K8",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
+  projectId: "talentosbd-e4206"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-  const qs = new URLSearchParams(location.search);
-  const returnTo = qs.get('return') || 'index.html';
-  sessionStorage.setItem('returnTo', returnTo);
+const TENANT_ID = "cba0be9f-94ad-4a26-b291-fa90af7491ee"; // Talentos
+const ORIGIN = location.origin;
+const FLAG_REDIRECT = "authRedirectStarted";
 
-  const $btn = document.getElementById('loginBtn');
-  const $err = document.getElementById('err');
-  const showBtn = ()=> $btn.classList.remove('hidden');
-  const showErr = (msg)=>{ $err.textContent = msg; $err.classList.remove('hidden'); showBtn(); };
-
-  const KEY = 'msLoginInProgress';
-
-  auth.onAuthStateChanged(function(user){
-    if (user){
-      const ret = sessionStorage.getItem('returnTo') || 'index.html';
-      location.replace(ret);
-    }
-  });
-
-  auth.getRedirectResult()
-    .then(function(result){
-      if (result && result.user){
-        sessionStorage.removeItem(KEY);
-        const ret = sessionStorage.getItem('returnTo') || 'index.html';
-        location.replace(ret);
-        return;
-      }
-      maybeStart();
-    })
-    .catch(function(e){
-      sessionStorage.removeItem(KEY);
-      showErr(e && e.message ? e.message : 'Falha ao iniciar login.');
-    });
-
-  function start(){
-    try{
-      sessionStorage.setItem(KEY,'1');
-      auth.signInWithRedirect(provider);
-    }catch(e){
-      sessionStorage.removeItem(KEY);
-      showErr(e.message || 'Erro ao redirecionar para login.');
-    }
+// Util: lê ?return=, garante mesma origem e bloqueia voltar ao próprio login
+function safeReturnUrl() {
+  const qp = new URLSearchParams(location.search);
+  let target = (qp.get("return") || "index.html").trim();
+  try {
+    const u = new URL(target, ORIGIN);
+    if (u.origin !== ORIGIN) return "index.html";
+    const file = (u.pathname.split("/").pop() || "").toLowerCase();
+    if (file === "login.html" || file === "login-firebase.html") return "index.html";
+    return u.pathname.replace(/^\//,"") + (u.search||"") + (u.hash||"");
+  } catch {
+    const f = target.toLowerCase();
+    if (f === "login.html" || f === "login-firebase.html") return "index.html";
+    return target;
   }
+}
 
-  function maybeStart(){
-    const inProgress = sessionStorage.getItem(KEY) === '1';
-    if (!inProgress){
-      setTimeout(start, 150);
-    }else{
-      showBtn();
+const provider = new firebase.auth.OAuthProvider('microsoft.com');
+provider.setCustomParameters({
+  tenant: TENANT_ID,
+  domain_hint: "talentosconsultoria.com.br"
+});
+
+const auth = firebase.auth();
+
+function setStatus(txt){ document.getElementById("status").textContent = txt; }
+function showBtn(){ document.getElementById("btnLogin").style.display = "inline-block"; }
+function showErr(e){ const el = document.getElementById("err"); el.textContent = e; el.style.display = "block"; }
+
+async function handleRedirectResult() {
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      const dest = safeReturnUrl();
+      sessionStorage.removeItem(FLAG_REDIRECT);
+      location.replace(dest);
+      return true;
     }
+  } catch (e) {
+    console.warn("getRedirectResult:", e);
+    showErr(e.message || String(e));
   }
+  return false;
+}
 
-  $btn.addEventListener('click', start);
+// Se já está logado (cache), vai direto
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    const dest = safeReturnUrl();
+    sessionStorage.removeItem(FLAG_REDIRECT);
+    location.replace(dest);
+  } else {
+    // sem user: exibe botão como fallback
+    showBtn();
+  }
+});
+
+async function startLogin() {
+  try {
+    sessionStorage.setItem(FLAG_REDIRECT, "1");
+    await auth.signInWithRedirect(provider);
+  } catch (e) {
+    showErr("Não foi possível iniciar o login. " + (e.message || e));
+  }
+}
+
+document.getElementById("btnLogin").addEventListener("click", startLogin);
+
+(async () => {
+  setStatus("Verificando sessão…");
+  const finished = await handleRedirectResult();
+  if (finished) return;
+
+  // Se ainda não iniciou redirect nesta aba, dispara automático
+  if (!sessionStorage.getItem(FLAG_REDIRECT)) {
+    setStatus("Redirecionando para Microsoft…");
+    startLogin();
+  } else {
+    // Estamos aguardando retorno
+    setStatus("Aguardando retorno da Microsoft…");
+    showBtn();
+  }
 })();
 </script>
 </body>
