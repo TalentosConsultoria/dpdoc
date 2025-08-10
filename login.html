@@ -48,6 +48,8 @@
       }
 
       const auth = firebase.auth();
+      // Garante persistência local antes de qualquer operação
+      try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) { console.warn('setPersistence falhou', e); }
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
       provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
 
@@ -92,6 +94,23 @@
 
       document.getElementById("btnLogin").addEventListener("click", doLoginRedirect);
       handleResult();
+
+      // Redireciona imediatamente se já houver sessão válida (pós-retorno ou refresh)
+      auth.onAuthStateChanged(async (u) => {
+        if (u) {
+          console.log('[login] onAuthStateChanged user=', u.email);
+          if (TalentosAuthGuard.emailDomainAllowed(u.email)) {
+            let target = returnUrl;
+            if (target === "/" || target === "") target = "index.html";
+            window.location.replace(target);
+          } else {
+            try { await auth.signOut(); } catch(e) {}
+          }
+        } else {
+          console.log('[login] onAuthStateChanged: sem usuário');
+        }
+      });
+
     })();
   </script>
 </body>
