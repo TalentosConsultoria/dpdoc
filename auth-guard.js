@@ -14,6 +14,10 @@
     let url; try { url = new URL(candidate, window.location.href); } catch { return TalentosConfig.DEFAULT_RETURN; }
     if (!sameOrigin(url.href)) return TalentosConfig.DEFAULT_RETURN;
     if (isLoginPath(url.pathname)) return TalentosConfig.DEFAULT_RETURN;
+    // Mapear raiz "/" para index.html em hosts estáticos
+    if (url.pathname === "/" || url.pathname === "") {
+      return "index.html" + url.search + url.hash;
+    }
     return url.pathname + url.search + url.hash;
   }
   async function ensureFirebaseAuthReady() {

@@ -36,7 +36,8 @@
       const params = new URLSearchParams(window.location.search);
       const error = params.get("error");
       const rawReturn = params.get("return");
-      const returnUrl = TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
+      let returnUrl = TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
+      if (returnUrl === "/" || returnUrl === "") { returnUrl = "index.html"; }
       const status = document.getElementById("status");
       const warn = document.getElementById("warnConfig");
 
