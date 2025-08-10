@@ -1,4 +1,98 @@
-<!doctype html><meta charset="utf-8"><title>Redirecionando…</title>
-<meta http-equiv="refresh" content="0;url=login.html">
-<script>location.replace('login.html'+location.search+location.hash)</script>
-<p>Redirecionando para <a href="login.html">login.html</a>…</p>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acesso Talentos</title>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    @keyframes fade-in-down {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fade-in-up {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in-down {
+      animation: fade-in-down .5s ease-out forwards;
+    }
+
+    .animate-fade-in-up {
+      animation: fade-in-up .5s ease-out forwards;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1 class="animate-fade-in-down">Acesso Talentos</h1>
+    <p class="animate-fade-in-up">Você será redirecionado para entrar com sua conta Microsoft.</p>
+    <button id="loginButton" class="animate-fade-in-down">Entrar com Microsoft</button>
+    <p id="loadingText" class="animate-fade-in-up" style="display:none;">Aguardando retorno da Microsoft...</p>
+    <p id="errorText" class="animate-fade-in-up" style="display:none; color: red;">Não foi possível iniciar o login.</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+      authDomain: "talentosbd-e4206.firebaseapp.com",
+      projectId: "talentosbd-e4206",
+      storageBucket: "talentosbd-e4206.appspot.com",
+      messagingSenderId: "523777669306",
+      appId: "1:523777669306:web:f71776b8f77b8884f7777c"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const fbAuth = firebase.auth();
+    fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+    const loginButton = document.getElementById('loginButton');
+    const loadingText = document.getElementById('loadingText');
+    const errorText = document.getElementById('errorText');
+    const params = new URLSearchParams(location.search);
+    const returnUrl = params.get('return') || 'index.html';
+
+    loginButton.addEventListener('click', function() {
+      loadingText.style.display = 'block';
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+
+      fbAuth.signInWithRedirect(provider)
+        .catch((error) => {
+          loadingText.style.display = 'none';
+          errorText.style.display = 'block';
+          console.error(error);
+        });
+    });
+
+    fbAuth.getRedirectResult()
+      .catch((error) => {
+        console.error("Erro ao obter o resultado do redirecionamento:", error);
+      })
+      .finally(() => {
+        const user = fbAuth.currentUser;
+        if (user) {
+          const email = user.email || "";
+          if (email.toLowerCase().endsWith("@talentosconsultoria.com.br")) {
+            // Redireciona para a URL de retorno
+            window.location.replace(returnUrl);
+          } else {
+            fbAuth.signOut().then(() => {
+              loadingText.style.display = 'none';
+              errorText.textContent = "Acesso permitido apenas para usuários do domínio talentosconsultoria.com.br";
+              errorText.style.display = 'block';
+            });
+          }
+        } else {
+          loginButton.style.display = 'block';
+        }
+      });
+  </script>
+</body>
+</html>
