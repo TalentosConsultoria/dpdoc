@@ -1,6 +1,5 @@
 /**
- * Guard unificado para páginas protegidas
- * Requisitos: firebase-app-compat, firebase-auth-compat, config.js
+ * Guard unificado para páginas protegidas (compat 10.12.4)
  */
 (function (global) {
   function sameOrigin(url) {
@@ -18,14 +17,12 @@
 
   function safeReturnUrl(candidate) {
     if (!candidate) return TalentosConfig.DEFAULT_RETURN;
-    // Normaliza relativo
     let url;
     try {
       url = new URL(candidate, window.location.href);
     } catch {
       return TalentosConfig.DEFAULT_RETURN;
     }
-    // Mesma origem e não apontar para login
     if (!sameOrigin(url.href)) return TalentosConfig.DEFAULT_RETURN;
     if (isLoginPath(url.pathname)) return TalentosConfig.DEFAULT_RETURN;
     return url.pathname + url.search + url.hash;
@@ -33,7 +30,6 @@
 
   async function ensureFirebaseAuthReady() {
     const auth = firebase.auth();
-    // força persistência local
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     return new Promise((resolve) => {
       const unsub = auth.onAuthStateChanged((user) => {
@@ -52,10 +48,7 @@
   }
 
   async function protect(options) {
-    const cfg = Object.assign({
-      loginPage: TalentosConfig.LOGIN_PAGE
-    }, options || {});
-
+    const cfg = Object.assign({ loginPage: TalentosConfig.LOGIN_PAGE }, options || {});
     const params = new URLSearchParams(window.location.search);
     const requestedReturn = params.get("return");
     const currentPath = window.location.pathname + window.location.search + window.location.hash;
@@ -70,7 +63,6 @@
       return;
     }
 
-    // Valida domínio
     if (!emailDomainAllowed(user.email)) {
       try { await auth.signOut(); } catch (e) {}
       const dst = cfg.loginPage + "?error=forbidden&return=" + encodeURIComponent(returnTarget);
@@ -78,20 +70,13 @@
       return;
     }
 
-    // Usuário autenticado e domínio ok → segue página
-    // Opcional: expõe user de forma controlada
     global.TalentosAuthGuard = global.TalentosAuthGuard || {};
     global.TalentosAuthGuard.currentUser = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || null
+      uid: user.uid, email: user.email, displayName: user.displayName || null
     };
   }
 
-  // Expondo API mínima
   global.TalentosAuthGuard = Object.assign(global.TalentosAuthGuard || {}, {
-    protect,
-    safeReturnUrl,
-    emailDomainAllowed
+    protect, safeReturnUrl, emailDomainAllowed
   });
 })(window);

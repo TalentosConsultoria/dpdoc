@@ -8,14 +8,17 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script src="./config.js"></script>
-  <style>
-    body { background: #f7f7f7; }
-  </style>
+  <script src="./auth-guard.js"></script>
+  <style>body { background: #f7f7f7; }</style>
 </head>
 <body class="min-h-screen flex items-center justify-center">
   <div class="bg-white rounded-2xl shadow p-6 w-full max-w-md">
     <h1 class="text-2xl font-semibold mb-4">Acesso Talentos Consultoria</h1>
-    <p class="text-sm text-gray-600 mb-6">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+    <p class="text-sm text-gray-600 mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+
+    <div id="warnConfig" class="hidden p-3 rounded-md text-sm mb-4 bg-yellow-50 text-yellow-800 border border-yellow-200">
+      Sua configuração Firebase está incompleta (placeholders detectados). Edite <code>config.js</code> e cole sua <em>firebaseConfig</em> real.
+    </div>
 
     <div id="status" class="text-sm text-gray-700 mb-4"></div>
 
@@ -33,40 +36,34 @@
       const params = new URLSearchParams(window.location.search);
       const error = params.get("error");
       const rawReturn = params.get("return");
-      const returnUrl = (function() {
-        // usa o guard para validar return
-        if (window.TalentosAuthGuard && TalentosAuthGuard.safeReturnUrl) {
-          return TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
-        }
-        // fallback básico caso guard não tenha carregado (não deve acontecer aqui)
-        try {
-          const url = new URL(rawReturn || TalentosConfig.DEFAULT_RETURN, window.location.href);
-          return (url.origin === window.location.origin ? (url.pathname + url.search + url.hash) : TalentosConfig.DEFAULT_RETURN);
-        } catch {
-          return TalentosConfig.DEFAULT_RETURN;
-        }
-      })();
-
+      const returnUrl = TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
       const status = document.getElementById("status");
+      const warn = document.getElementById("warnConfig");
+
+      // Aviso se config tem placeholders
+      try {
+        if (window.__TalentosHasPlaceholderConfig && __TalentosHasPlaceholderConfig()) {
+          warn.classList.remove("hidden");
+        }
+      } catch (e) {}
+
       if (error === "forbidden") {
         status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
       }
 
       const auth = firebase.auth();
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      // Ajuste se você tiver tenant específico; 'common' funciona em geral
       provider.setCustomParameters({
-        // tenant: 'YOUR_TENANT_ID', // opcional
         prompt: 'select_account',
         domain_hint: 'talentosconsultoria.com.br'
       });
 
+      const FLAG = 'talentos_login_inflight';
+
       async function handleResult() {
         try {
           const result = await auth.getRedirectResult();
-          // Se vier de redirect, haverá user ou credential
           if (result && result.user) {
-            // Valida domínio antes de prosseguir
             if (TalentosAuthGuard.emailDomainAllowed(result.user.email)) {
               window.location.replace(returnUrl);
               return;
@@ -78,39 +75,28 @@
           }
         } catch (e) {
           console.error(e);
-          status.textContent = "Erro ao processar login. Tente novamente.";
+          status.textContent = "Erro ao processar retorno do login. Verifique a configuração do Firebase/Azure.";
+        } finally {
+          sessionStorage.removeItem(FLAG);
         }
       }
 
-      async function doLogin() {
-        status.textContent = "Abrindo janela de login...";
+      async function doLoginRedirect() {
+        if (sessionStorage.getItem(FLAG) === '1') return;
+        sessionStorage.setItem(FLAG, '1');
+        status.textContent = "Redirecionando para o provedor de login...";
         try {
-          // Tenta popup primeiro
-          await auth.signInWithPopup(provider);
-          const user = auth.currentUser;
-          if (user && TalentosAuthGuard.emailDomainAllowed(user.email)) {
-            window.location.replace(returnUrl);
-          } else {
-            await auth.signOut();
-            status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-          }
-        } catch (popupErr) {
-          console.warn("Popup falhou, tentando redirect.", popupErr);
-          try {
-            await auth.signInWithRedirect(provider);
-          } catch (redirectErr) {
-            console.error(redirectErr);
-            status.textContent = "Não foi possível iniciar o login. Verifique o bloqueio de popups ou tente novamente.";
-          }
+          await auth.signInWithRedirect(provider);
+        } catch (e) {
+          console.error(e);
+          sessionStorage.removeItem(FLAG);
+          status.textContent = "Não foi possível iniciar o login por redirecionamento. Revise Authorized domains e Redirect URI.";
         }
       }
 
-      document.getElementById("btnLogin").addEventListener("click", doLogin);
+      document.getElementById("btnLogin").addEventListener("click", doLoginRedirect);
       handleResult();
     })();
   </script>
-
-  <!-- Carrega o guard ao final para poder usar safeReturnUrl e validações -->
-  <script src="./auth-guard.js"></script>
 </body>
 </html>

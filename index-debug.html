@@ -12,20 +12,12 @@
 <body class="min-h-screen bg-gray-50">
   <div class="max-w-3xl mx-auto p-6">
     <h1 class="text-2xl font-semibold mb-4">Debug de Autenticação</h1>
-    <div id="origin" class="text-sm text-gray-600 mb-2"></div>
-    <div id="allow" class="text-sm text-gray-600 mb-4"></div>
     <pre id="out" class="bg-white p-4 rounded-xl shadow whitespace-pre-wrap"></pre>
   </div>
 
   <script>
     (async function() {
       const out = document.getElementById("out");
-      const origin = document.getElementById("origin");
-      const allow = document.getElementById("allow");
-      origin.textContent = "Origem atual: " + window.location.origin;
-      const list = (TalentosConfig.ALLOWED_ORIGINS_DEBUG || []).join(", ") || "(vazio)";
-      allow.textContent = "Origens permitidas para debug: " + list;
-
       const auth = firebase.auth();
       await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
@@ -41,7 +33,6 @@
         }
       });
 
-      // Não bloqueia por origem; apenas informa
       log("Debug iniciado.");
     })();
   </script>

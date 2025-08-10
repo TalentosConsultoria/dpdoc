@@ -26,15 +26,10 @@
 
   <script>
     TalentosAuthGuard.protect();
-    // Exibir info resumida do usuário (sem dados sensíveis)
     (function(){
       const u = (window.TalentosAuthGuard && TalentosAuthGuard.currentUser) || null;
-      const el = document.getElementById("userBox");
-      if (u) {
-        el.textContent = "Usuário: " + (u.displayName || u.email) + " | " + u.email;
-      } else {
-        el.textContent = "Carregando...";
-      }
+      document.getElementById("userBox").textContent =
+        u ? ("Usuário: " + (u.displayName || u.email) + " | " + u.email) : "Carregando...";
     })();
   </script>
 </body>
