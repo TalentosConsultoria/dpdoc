@@ -1,76 +1,41 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Central de Ferramentas - Talentos</title>
-  <style>
-    body { font-family: system-ui, sans-serif; }
-    .wrap { max-width: 980px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 18px; box-shadow: 0 10px 35px rgba(0,0,0,.12); }
-    .title { font-size: 28px; font-weight: 800; margin: 0 0 6px; color: #1f3aad; }
-    .muted { color: #536087; margin: 0 0 18px; }
-    #userbar { display: none; gap: 10px; align-items: center; background: #0b3bda; color: #fff; padding: 8px 12px; border-radius: 10px; position: fixed; top: 10px; left: 10px; z-index: 9999; }
-    .btn { display: inline-block; background: #2563eb; color: #fff; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; }
-  </style>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyD55b7K0uWbyPvgm5p1nD1lgpCyqE9Zt5I", 
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "523777669306",
-      appId: "1:523777669306:web:f71776b8f77b8884f7777c"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    const fbAuth = firebase.auth();
-    fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-    const ORG_DOMAIN = "talentosconsultoria.com.br";
-    const LOGIN_PAGE = "login-firebase.html";
-
-    function goLogin() {
-      const ret = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
-      location.replace(`${LOGIN_PAGE}?return=${ret}`);
-    }
-
-    firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) {
-        goLogin();
-        return;
-      }
-      const em = (user.email || "").toLowerCase();
-      if (!em.endsWith(`@${ORG_DOMAIN}`)) {
-        await firebase.auth().signOut();
-        goLogin();
-        return;
-      }
-      document.getElementById("userbar").style.display = "flex";
-      document.getElementById("uemail").textContent = user.email;
-    });
-
-    document.getElementById("logout").addEventListener("click", async () => {
-      await firebase.auth().signOut();
-      goLogin();
-    });
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu Principal - Talentos Consultoria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script src="./auth-guard.js"></script>
 </head>
-<body>
-  <div id="userbar" style="display:none">
-    <span id="uemail"></span>
-    <button id="logout" class="btn">Sair</button>
-  </div>
-  <div class="wrap">
-    <h1 class="title">Bem-vindo(a) à Central de Ferramentas</h1>
-    <p class="muted">Escolha a ferramenta que deseja acessar.</p>
-    <div>
-      <a href="qlp-format.html" class="btn">QLP</a>
-      <a href="pdf-tool.html" class="btn">PDF</a>
-      <a href="format-bancodoc.html" class="btn">Bdoc</a>
+<body class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-4">Menu Principal</h1>
+    <p class="text-gray-700">Você está autenticado.</p>
+
+    <div id="userBox" class="mt-4 p-4 bg-white shadow rounded-xl"></div>
+
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a href="./protected-template.html" class="p-4 bg-white rounded-xl shadow hover:shadow-md border">
+        Exemplo: outra página protegida
+      </a>
     </div>
   </div>
+
+  <script>
+    TalentosAuthGuard.protect();
+    // Exibir info resumida do usuário (sem dados sensíveis)
+    (function(){
+      const u = (window.TalentosAuthGuard && TalentosAuthGuard.currentUser) || null;
+      const el = document.getElementById("userBox");
+      if (u) {
+        el.textContent = "Usuário: " + (u.displayName || u.email) + " | " + u.email;
+      } else {
+        el.textContent = "Carregando...";
+      }
+    })();
+  </script>
 </body>
 </html>

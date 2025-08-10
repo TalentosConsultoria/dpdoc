@@ -1,132 +1,116 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Acesso Talentos</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><text y='1em' font-size='90'>🔐</text></svg>">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Talentos Consultoria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
   <style>
-    body{margin:0;background:#eef3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
-    .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
-    .card{background:#fff;width:min(560px,92vw);padding:30px 26px;border-radius:16px;box-shadow:0 20px 60px rgba(0,40,140,.15)}
-    h1{margin:0 0 8px;font-size:28px;color:#1f3aad}
-    p{margin:0 0 18px;color:#334}
-    .btn{display:inline-block;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer}
-    .hint{color:#64748b;font-size:12px;margin-top:10px}
-    .err{margin-top:12px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:10px;display:none;white-space:pre-wrap}
+    body { background: #f7f7f7; }
   </style>
-
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
 </head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Acesso Talentos</h1>
-      <p id="status">Redirecionando para login corporativo…</p>
-      <button id="btnLogin" class="btn" style="display:none">Entrar com Microsoft</button>
-      <div class="hint">Se não redirecionar automaticamente, clique no botão.</div>
-      <div id="err" class="err"></div>
-    </div>
+<body class="min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow p-6 w-full max-w-md">
+    <h1 class="text-2xl font-semibold mb-4">Acesso Talentos Consultoria</h1>
+    <p class="text-sm text-gray-600 mb-6">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+
+    <div id="status" class="text-sm text-gray-700 mb-4"></div>
+
+    <button id="btnLogin" class="w-full py-2 rounded-xl border hover:shadow">
+      Entrar com Microsoft
+    </button>
+
+    <p class="text-xs text-gray-500 mt-4">
+      Ao continuar, você concorda com a política de uso e segurança.
+    </p>
   </div>
 
-<script>
-// ====== Firebase config — igual ao guard.js ======
-const firebaseConfig = {
-  apiKey: "AIzaSyAL8t7sgoCoNj3nkfUG3mkz0WEpRmH3K8",
-  authDomain: "talentosbd-e4206.firebaseapp.com",
-  projectId: "talentosbd-e4206"
-};
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get("error");
+      const rawReturn = params.get("return");
+      const returnUrl = (function() {
+        // usa o guard para validar return
+        if (window.TalentosAuthGuard && TalentosAuthGuard.safeReturnUrl) {
+          return TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
+        }
+        // fallback básico caso guard não tenha carregado (não deve acontecer aqui)
+        try {
+          const url = new URL(rawReturn || TalentosConfig.DEFAULT_RETURN, window.location.href);
+          return (url.origin === window.location.origin ? (url.pathname + url.search + url.hash) : TalentosConfig.DEFAULT_RETURN);
+        } catch {
+          return TalentosConfig.DEFAULT_RETURN;
+        }
+      })();
 
-const TENANT_ID = "cba0be9f-94ad-4a26-b291-fa90af7491ee"; // Talentos
-const ORIGIN = location.origin;
-const FLAG_REDIRECT = "authRedirectStarted";
+      const status = document.getElementById("status");
+      if (error === "forbidden") {
+        status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+      }
 
-// Util: lê ?return=, garante mesma origem e bloqueia voltar ao próprio login
-function safeReturnUrl() {
-  const qp = new URLSearchParams(location.search);
-  let target = (qp.get("return") || "index.html").trim();
-  try {
-    const u = new URL(target, ORIGIN);
-    if (u.origin !== ORIGIN) return "index.html";
-    const file = (u.pathname.split("/").pop() || "").toLowerCase();
-    if (file === "login.html" || file === "login-firebase.html") return "index.html";
-    return u.pathname.replace(/^\//,"") + (u.search||"") + (u.hash||"");
-  } catch {
-    const f = target.toLowerCase();
-    if (f === "login.html" || f === "login-firebase.html") return "index.html";
-    return target;
-  }
-}
+      const auth = firebase.auth();
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      // Ajuste se você tiver tenant específico; 'common' funciona em geral
+      provider.setCustomParameters({
+        // tenant: 'YOUR_TENANT_ID', // opcional
+        prompt: 'select_account',
+        domain_hint: 'talentosconsultoria.com.br'
+      });
 
-const provider = new firebase.auth.OAuthProvider('microsoft.com');
-provider.setCustomParameters({
-  tenant: TENANT_ID,
-  domain_hint: "talentosconsultoria.com.br"
-});
+      async function handleResult() {
+        try {
+          const result = await auth.getRedirectResult();
+          // Se vier de redirect, haverá user ou credential
+          if (result && result.user) {
+            // Valida domínio antes de prosseguir
+            if (TalentosAuthGuard.emailDomainAllowed(result.user.email)) {
+              window.location.replace(returnUrl);
+              return;
+            } else {
+              await auth.signOut();
+              status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+              return;
+            }
+          }
+        } catch (e) {
+          console.error(e);
+          status.textContent = "Erro ao processar login. Tente novamente.";
+        }
+      }
 
-const auth = firebase.auth();
+      async function doLogin() {
+        status.textContent = "Abrindo janela de login...";
+        try {
+          // Tenta popup primeiro
+          await auth.signInWithPopup(provider);
+          const user = auth.currentUser;
+          if (user && TalentosAuthGuard.emailDomainAllowed(user.email)) {
+            window.location.replace(returnUrl);
+          } else {
+            await auth.signOut();
+            status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+          }
+        } catch (popupErr) {
+          console.warn("Popup falhou, tentando redirect.", popupErr);
+          try {
+            await auth.signInWithRedirect(provider);
+          } catch (redirectErr) {
+            console.error(redirectErr);
+            status.textContent = "Não foi possível iniciar o login. Verifique o bloqueio de popups ou tente novamente.";
+          }
+        }
+      }
 
-function setStatus(txt){ document.getElementById("status").textContent = txt; }
-function showBtn(){ document.getElementById("btnLogin").style.display = "inline-block"; }
-function showErr(e){ const el = document.getElementById("err"); el.textContent = e; el.style.display = "block"; }
+      document.getElementById("btnLogin").addEventListener("click", doLogin);
+      handleResult();
+    })();
+  </script>
 
-async function handleRedirectResult() {
-  try {
-    const result = await auth.getRedirectResult();
-    if (result && result.user) {
-      const dest = safeReturnUrl();
-      sessionStorage.removeItem(FLAG_REDIRECT);
-      location.replace(dest);
-      return true;
-    }
-  } catch (e) {
-    console.warn("getRedirectResult:", e);
-    showErr(e.message || String(e));
-  }
-  return false;
-}
-
-// Se já está logado (cache), vai direto
-auth.onAuthStateChanged((user) => {
-  if (user) {
-    const dest = safeReturnUrl();
-    sessionStorage.removeItem(FLAG_REDIRECT);
-    location.replace(dest);
-  } else {
-    // sem user: exibe botão como fallback
-    showBtn();
-  }
-});
-
-async function startLogin() {
-  try {
-    sessionStorage.setItem(FLAG_REDIRECT, "1");
-    await auth.signInWithRedirect(provider);
-  } catch (e) {
-    showErr("Não foi possível iniciar o login. " + (e.message || e));
-  }
-}
-
-document.getElementById("btnLogin").addEventListener("click", startLogin);
-
-(async () => {
-  setStatus("Verificando sessão…");
-  const finished = await handleRedirectResult();
-  if (finished) return;
-
-  // Se ainda não iniciou redirect nesta aba, dispara automático
-  if (!sessionStorage.getItem(FLAG_REDIRECT)) {
-    setStatus("Redirecionando para Microsoft…");
-    startLogin();
-  } else {
-    // Estamos aguardando retorno
-    setStatus("Aguardando retorno da Microsoft…");
-    showBtn();
-  }
-})();
-</script>
+  <!-- Carrega o guard ao final para poder usar safeReturnUrl e validações -->
+  <script src="./auth-guard.js"></script>
 </body>
 </html>

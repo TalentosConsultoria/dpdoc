@@ -1,83 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DPDoc — Debug de Autenticação</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;text-align:center;background:#eef3ff;margin:0;padding:40px}
-    .card{max-width:860px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:28px;text-align:left}
-    h1{margin:0 0 12px;font-size:24px}
-    pre{background:#0b1020;color:#cde3ff;border-radius:12px;padding:14px;overflow:auto}
-    .row{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
-    a.button,button{background:#2563eb;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none;display:inline-block}
-    .muted{color:#5b6b8c;font-size:14px}
-    .ok{color:#16a34a}
-    .bad{color:#dc2626}
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debug Auth - Talentos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
 </head>
-<body>
-  <div class="card">
-    <h1>Debug de Autenticação — DPDoc</h1>
-    <div class="muted">Use esta página apenas para diagnosticar. Ela não fica no menu.</div>
-    <div id="state" class="muted" style="margin-top:10px"></div>
-    <div class="row">
-      <a class="button" href="login.html?return=index.html">Forçar login e voltar ao index</a>
-      <a class="button" href="login.html">Abrir somente o login</a>
-      <button id="clear">Limpar sessão local</button>
-    </div>
-    <h3 style="margin-top:24px">Dump</h3>
-    <pre id="dump">Carregando…</pre>
+<body class="min-h-screen bg-gray-50">
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-4">Debug de Autenticação</h1>
+    <div id="origin" class="text-sm text-gray-600 mb-2"></div>
+    <div id="allow" class="text-sm text-gray-600 mb-4"></div>
+    <pre id="out" class="bg-white p-4 rounded-xl shadow whitespace-pre-wrap"></pre>
   </div>
-<script>
-(function(){
-  const out = [];
-  function log(...a){ out.push(a.join(' ')); }
-  function dump(){
-    document.getElementById('dump').textContent = out.join('\n');
-  }
-  const st = document.getElementById('state');
-  function setState(ok, msg){
-    st.innerHTML = (ok ? '✅ ' : '⚠️ ') + msg;
-    st.className = ok ? 'ok' : 'bad';
-  }
 
-  try {
-    log('[time]', new Date().toISOString());
-    log('[origin]', location.origin);
-    log('[path]', location.pathname + location.search);
+  <script>
+    (async function() {
+      const out = document.getElementById("out");
+      const origin = document.getElementById("origin");
+      const allow = document.getElementById("allow");
+      origin.textContent = "Origem atual: " + window.location.origin;
+      const list = (TalentosConfig.ALLOWED_ORIGINS_DEBUG || []).join(", ") || "(vazio)";
+      allow.textContent = "Origens permitidas para debug: " + list;
 
-    const sess = sessionStorage.getItem('talentos_auth');
-    const last = sessionStorage.getItem('talentos_auth_time');
-    log('[sessionStorage.talentos_auth]', JSON.stringify(sess));
-    log('[sessionStorage.talentos_auth_time]', last);
+      const auth = firebase.auth();
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    const allowed = ["https://dpdoc.talentosconsultoria.com.br"];
-    log('[allowedOrigins]', JSON.stringify(allowed));
+      function log(msg) {
+        out.textContent += (typeof msg === "string" ? msg : JSON.stringify(msg, null, 2)) + "\n";
+      }
 
-    if (!allowed.includes(location.origin)){
-      setState(false, 'Origem não permitida: ' + location.origin);
-      log('blocked due to origin check');
-    } else if (!sess) {
-      setState(false, 'Sem sessão local — redirecionando para login…');
-      log('no session, will redirect to login.html?return=index.html');
-      setTimeout(()=>{ location.href = 'login.html?return=index.html'; }, 800);
-    } else {
-      setState(true, 'Sessão encontrada — tudo certo 👍');
-      log('session OK, você deveria ver o index.html normalmente');
-    }
-  } catch(e){
-    setState(false, 'Erro no script: ' + e.message);
-    log('[exception]', e.stack || e.message);
-  } finally {
-    dump();
-  }
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          log({ state: "LOGADO", uid: user.uid, email: user.email, name: user.displayName });
+        } else {
+          log({ state: "DESLOGADO" });
+        }
+      });
 
-  document.getElementById('clear').addEventListener('click', ()=>{
-    ['talentos_auth','talentos_auth_time'].forEach(k=>sessionStorage.removeItem(k));
-    location.reload();
-  });
-})();
-</script>
+      // Não bloqueia por origem; apenas informa
+      log("Debug iniciado.");
+    })();
+  </script>
 </body>
 </html>
