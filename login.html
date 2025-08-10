@@ -40,12 +40,7 @@
       const status = document.getElementById("status");
       const warn = document.getElementById("warnConfig");
 
-      // Aviso se config tem placeholders
-      try {
-        if (window.__TalentosHasPlaceholderConfig && __TalentosHasPlaceholderConfig()) {
-          warn.classList.remove("hidden");
-        }
-      } catch (e) {}
+      try { if (window.__TalentosHasPlaceholderConfig && __TalentosHasPlaceholderConfig()) warn.classList.remove("hidden"); } catch (e) {}
 
       if (error === "forbidden") {
         status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
@@ -53,10 +48,7 @@
 
       const auth = firebase.auth();
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        domain_hint: 'talentosconsultoria.com.br'
-      });
+      provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
 
       const FLAG = 'talentos_login_inflight';
 
@@ -75,7 +67,8 @@
           }
         } catch (e) {
           console.error(e);
-          status.textContent = "Erro ao processar retorno do login. Verifique a configuração do Firebase/Azure.";
+          const msg = (e && (e.code || e.message)) ? `${e.code} – ${e.message}` : "Erro ao processar retorno do login.";
+          status.textContent = msg + " Revise Authorized domains e Redirect URI.";
         } finally {
           sessionStorage.removeItem(FLAG);
         }
@@ -90,7 +83,9 @@
         } catch (e) {
           console.error(e);
           sessionStorage.removeItem(FLAG);
-          status.textContent = "Não foi possível iniciar o login por redirecionamento. Revise Authorized domains e Redirect URI.";
+          const msg = (e && (e.code || e.message)) ? `${e.code} – ${e.message}` :
+                      "Falha ao iniciar login por redirecionamento.";
+          status.textContent = msg + " Revise Authorized domains e Redirect URI.";
         }
       }
 

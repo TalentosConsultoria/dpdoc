@@ -1,25 +1,18 @@
-/**
- * Config Firebase única com checagens de sanidade.
- * Preencha com os valores REAIS do seu projeto. Placeholders geram aviso visual.
- */
 (function (global) {
-  // ==== COLE SUA CONFIG AQUI ====
   const firebaseConfig = {
-    apiKey: "TODO_API_KEY",
-    authDomain: "TODO_AUTH_DOMAIN",
-    projectId: "TODO_PROJECT_ID",
-    appId: "TODO_APP_ID"
+    apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+    authDomain: "talentosbd-e4206.firebaseapp.com",
+    projectId: "talentosbd-e4206",
+    storageBucket: "talentosbd-e4206.firebasestorage.app",
+    messagingSenderId: "580727253031",
+    appId: "1:580727253031:web:5368302ef0da6277788602",
+    measurementId: "G-S464LNX2J9"
   };
-  // ==============================
-
-  function hasPlaceholder(cfg) {
-    return Object.values(cfg).some(v => typeof v === "string" && v.startsWith("TODO_"));
-  }
 
   if (!global.firebase) {
     console.error("Firebase SDK não carregado. Inclua firebase-app-compat e firebase-auth-compat antes de config.js");
   } else {
-    if ((firebase.apps && firebase.apps.length === 0) || (firebase.getApps && firebase.getApps().length === 0)) {
+    if ((firebase.apps && firebase.apps.length === 0) or (firebase.getApps && firebase.getApps().length === 0)) {
       firebase.initializeApp(firebaseConfig);
     }
   }
@@ -31,6 +24,5 @@
     ALLOWED_ORIGINS_DEBUG: []
   };
 
-  // Expor função para checar placeholder (usado pelo login para exibir aviso)
-  global.__TalentosHasPlaceholderConfig = function() { return hasPlaceholder(firebaseConfig); };
+  global.__TalentosHasPlaceholderConfig = function() { return false; };
 })(window);
