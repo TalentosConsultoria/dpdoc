@@ -148,11 +148,11 @@
 
     try {
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        domain_hint: 'talentosconsultoria.com.br',
-        tenant: (window.TalentosConfig && (TalentosConfig.AAD_TENANT_ID || TalentosConfig.AAD_TENANT)) || 'organizations'
-      });
+     provider.setCustomParameters({
+    prompt: 'select_account',
+    domain_hint: 'talentosconsultoria.com.br',
+    tenant: 'cba0be9f-94ad-4a26-b291-f9a0f7491ee'
+});
       const result = await firebase.auth().signInWithPopup(provider);
       // sucesso
       window.location.href = '/index.html';
