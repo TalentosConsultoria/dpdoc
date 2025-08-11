@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Página Protegida - Template</title>
+  <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="./config.js?v=3.6"></script>
+  <script data-cfasync="false" src="./auth-guard.js?v=3.6"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-4">Página Protegida (Modelo)</h1>
+    <p>Copie este cabeçalho e o `TalentosAuthGuard.protect()` para qualquer página que precise de proteção.</p>
+  </div>
+  <script>TalentosAuthGuard.protect();</script>
+</body>
+</html>
