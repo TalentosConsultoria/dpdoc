@@ -29,6 +29,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Firebase Auth Guard -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    try {
+      if (!window.firebase?.apps?.length) {
+        firebase.initializeApp(TalentosConfig.firebaseConfig);
+      }
+      // Redireciona para login se não autenticado
+      firebase.auth().onAuthStateChanged(function(u){
+        if (!u) { window.location.replace('/login.html'); }
+      });
+      window.__dpdocSignOut = async function(){
+        try { await firebase.auth().signOut(); window.location.replace('/login.html'); } catch(e){ console.error(e); }
+      };
+    } catch(e) { console.error('Auth guard init error:', e); }
+  </script>
+
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen font-sans">
 
@@ -62,7 +82,12 @@
                         Bdoc
                     </a>
                 </div>
-            </nav>
+            
+            <button onclick="window.__dpdocSignOut && window.__dpdocSignOut()" class="ml-4 px-3 py-1.5 rounded-md bg-red-600 text-white text-sm shadow hover:bg-red-700 transition">
+              Sair
+            </button>
+
+                </nav>
         </div>
     </header>
 

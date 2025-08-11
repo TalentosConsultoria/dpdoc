@@ -27,6 +27,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Firebase Auth Guard -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    try {
+      if (!window.firebase?.apps?.length) {
+        firebase.initializeApp(TalentosConfig.firebaseConfig);
+      }
+      // Redireciona para login se não autenticado
+      firebase.auth().onAuthStateChanged(function(u){
+        if (!u) { window.location.replace('/login.html'); }
+      });
+      window.__dpdocSignOut = async function(){
+        try { await firebase.auth().signOut(); window.location.replace('/login.html'); } catch(e){ console.error(e); }
+      };
+    } catch(e) { console.error('Auth guard init error:', e); }
+  </script>
+
 </head>
 <body class="flex justify-center items-center min-h-screen p-4 font-sans bg-slate-100">
   

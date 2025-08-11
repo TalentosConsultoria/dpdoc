@@ -59,6 +59,26 @@
         background-color: #0056b3;
     }
   </style>
+
+  <!-- Firebase Auth Guard -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    try {
+      if (!window.firebase?.apps?.length) {
+        firebase.initializeApp(TalentosConfig.firebaseConfig);
+      }
+      // Redireciona para login se não autenticado
+      firebase.auth().onAuthStateChanged(function(u){
+        if (!u) { window.location.replace('/login.html'); }
+      });
+      window.__dpdocSignOut = async function(){
+        try { await firebase.auth().signOut(); window.location.replace('/login.html'); } catch(e){ console.error(e); }
+      };
+    } catch(e) { console.error('Auth guard init error:', e); }
+  </script>
+
 </head>
 <body>
   <a href="index.html" class="back-button">← Voltar para o Menu</a>
