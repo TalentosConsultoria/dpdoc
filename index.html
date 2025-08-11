@@ -71,6 +71,34 @@
       console.error("getRedirectResult:", err);
       // Não bloqueia a página; usuário pode tentar de novo no botão
     });
+    <script>
+// ... seu código de init Firebase ...
+
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// Persistência local
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+
+// 👇 ADICIONE ESTE BLOCO AQUI — processa o retorno do redirect
+auth.getRedirectResult()
+  .then((res) => {
+    if (res && res.user) {
+      // já logou via redirect; o onAuthStateChanged também vai disparar,
+      // mas se quiser pode atualizar UI aqui:
+      // document.getElementById("userEmail").textContent = res.user.email || "";
+      // mostrar app, esconder login, etc.
+    }
+  })
+  .catch((e) => {
+    console.error("[index] getRedirectResult:", e);
+  });
+
+// ... depois mantenha o seu onAuthStateChanged como já está ...
+auth.onAuthStateChanged((user) => {
+  // seu código existente de mostrar app/esconder login
+});
+</script>
 
     // Sessão ativa -> vai para o index
     auth.onAuthStateChanged(user => {
