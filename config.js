@@ -8,6 +8,7 @@
     appId: "1:580727253031:web:5368302ef0da6277788602",
     measurementId: "G-S464LNX2J9"
   };
+
   if (!global.firebase) { console.error("[config] Firebase SDK não carregado."); }
   else {
     try {
@@ -17,6 +18,7 @@
       else { console.log("[config] Firebase App já estava inicializado."); }
     } catch (e) { console.error("[config] Falha ao inicializar Firebase App:", e); }
   }
+
   global.TalentosConfig = {
     firebaseConfig: firebaseConfig,
     ALLOWED_DOMAINS: ["talentosconsultoria.com.br"],
