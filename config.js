@@ -1,7 +1,7 @@
 (function (global) {
  const firebaseConfig = {
   apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-  authDomain: "auth.talentosconsultoria.com.br",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
   projectId: "talentosbd-e4206",
   storageBucket: "talentosbd-e4206.firebasestorage.app",
   messagingSenderId: "580727253031",
@@ -24,7 +24,8 @@
     ALLOWED_DOMAINS: ["talentosconsultoria.com.br"],
     LOGIN_PAGE: "login.html",
     DEFAULT_RETURN: "index.html",
-    ALLOWED_ORIGINS_DEBUG: []
+    ALLOWED_ORIGINS_DEBUG: [],
+    AAD_TENANT: 'talentosconsultoria.com.br'
   };
   TalentosConfig.allowedDomains = TalentosConfig.ALLOWED_DOMAINS;
   TalentosConfig.redirectAfterLogin = TalentosConfig.DEFAULT_RETURN;
