@@ -4,19 +4,79 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acesso - Talentos Consultoria</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
-  <!-- MSAL browser -->
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
-  <script src="assets/js/config.js" defer></script>
-  <script src="assets/js/msal-init.js" defer></script>
+  <link rel="stylesheet" href="assets/css/styles.css"><!-- Loader robusto para MSAL com fallbacks e sem interferência do Rocket Loader -->
+<script data-cfasync="false">
+(function(){
+  function appendScript(src, onload, onerror){
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    s.defer = false;
+    s.onload = onload;
+    s.onerror = onerror || function(){ console.error("Falha ao carregar:", src); };
+    document.head.appendChild(s);
+  }
+  var cdns = [
+    "https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js",
+    "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js",
+    "https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"
+  ];
+  var i = 0;
+  function tryNext(){
+    if (i >= cdns.length) {
+      console.error("MSAL não carregou de nenhum CDN.");
+      return;
+    }
+    appendScript(cdns[i++], function(){
+      if (!window.msal) { tryNext(); return; }
+      // Carrega o init somente depois que o MSAL estiver disponível
+      appendScript("assets/js/msal-init.js");
+    }, function(){ tryNext(); });
+  }
+  tryNext();
+})();
+</script>
+<script src="assets/js/config.js" defer></script>
 </head>
 <body>
   <div class="container">
     <div class="card">
-      <h1>Entrando com Microsoft…</h1>
-      <p class="muted">Se nada acontecer em alguns segundos, atualize a página.</p>
-      <p class="muted">Tenant e domínio restritos: @talentosconsultoria.com.br</p>
+      <h1>Acesso Talentos Consultoria</h1>
+      <p class="muted">Faça login com sua conta corporativa<br>@talentosconsultoria.com.br</p>
+      <div style="margin-top:12px;">
+        <button id="btn-ms-login" class="btn">Entrar com Microsoft</button>
+      </div>
+      <p id="status" class="muted" style="margin-top:12px;"></p>
     </div>
   </div>
+  <script>
+    // Helper para verificar MSAL carregado
+    (function(){
+      const s = document.getElementById('status');
+      function setStatus(t){ if(s) s.textContent = t; }
+
+      if (!window.msal) {
+        setStatus('MSAL não carregou. Verifique a rede/Cloudflare.');
+        return;
+      }
+      setStatus('Pronto para autenticar.');
+
+      const btn = document.getElementById('btn-ms-login');
+      if (btn) {
+        btn.addEventListener('click', async ()=>{
+          try {
+            if (window.TalentosAuth?.beginLogin) {
+              await window.TalentosAuth.beginLogin();
+            } else {
+              setStatus('MSAL ainda inicializando… tente novamente.');
+            }
+          } catch (e) {
+            console.error(e);
+            setStatus('Falha ao iniciar login: ' + (e.message || e));
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

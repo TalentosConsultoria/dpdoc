@@ -101,12 +101,20 @@
   }
 
   // Expor utilitários globalmente
-  window.TalentosAuth = {
+  window.TalentosAuth = { beginLogin: async ()=>{ try { await msalInstance.loginRedirect({ scopes: window.TalentosConfig.MSAL_SCOPES || [] }); } catch(e){ console.error('Erro loginRedirect', e);} },
     msalInstance,
     getAccount,
     forceLogout
   };
 
-  // Iniciar
-  handleRedirect();
+  // Iniciar apenas o tratamento do retorno de redirect.
+// Login automático somente se query param ?auto=1
+  (async function init(){
+    const qp = new URLSearchParams(location.search);
+    await handleRedirect(); // processa retorno e seta conta ativa se vier de redirect
+    const account = getAccount();
+    if (!account && qp.get("auto") === "1") {
+      await msalInstance.loginRedirect({ scopes: window.TalentosConfig.MSAL_SCOPES || [] });
+    }
+  })();
 })();
