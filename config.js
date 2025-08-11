@@ -1,7 +1,7 @@
 (function (global) {
  const firebaseConfig = {
   apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-  authDomain: "auth.talentosconsultoria.com.br"
+  authDomain: "auth.talentosconsultoria.com.br",
   projectId: "talentosbd-e4206",
   storageBucket: "talentosbd-e4206.firebasestorage.app",
   messagingSenderId: "580727253031",
