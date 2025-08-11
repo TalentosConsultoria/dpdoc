@@ -1,66 +1,43 @@
-// --- AUTO-INIT de segurança: garante App DEFAULT antes de usar auth ---
-(function () {
+(function(){
   try {
     var hasCompat = (typeof firebase !== 'undefined') && firebase.apps && firebase.apps.length > 0;
     var hasMod = (typeof firebase !== 'undefined') && firebase.getApps && firebase.getApps().length > 0;
     if (!hasCompat && !hasMod) {
       var cfg = (window.TalentosConfig && (TalentosConfig.firebaseConfig || TalentosConfig)) || null;
-      if (cfg) {
-        firebase.initializeApp(cfg);
-        console.log("[guard] Firebase App inicializado pelo guard (fallback).");
-      } else {
-        console.warn("[guard] Sem config para inicializar Firebase (TalentosConfig não encontrado).");
-      }
-    } else {
-      console.log("[guard] Firebase App já estava inicializado.");
+      if (cfg) { firebase.initializeApp(cfg); console.log("[guard] App inicializado (fallback)."); }
     }
-  } catch (e) {
-    console.error("[guard] Falha no auto-init do Firebase:", e);
-  }
+  } catch(e){ console.error("[guard] auto-init", e); }
 })();
-
 (function (global) {
-  function sameOrigin(url) {
-    try {
-      const target = new URL(url, window.location.href);
-      return target.origin === window.location.origin;
-    } catch (e) { return false; }
-  }
-  function isLoginPath(pathname) { return /(^|\/)login(\.html)?$/i.test(pathname); }
+  function sameOrigin(url) { try { const u = new URL(url, location.href); return u.origin === location.origin; } catch { return false; } }
+  function isLoginPath(p) { return /(^|\/)login(\.html)?$/i.test(p); }
   function safeReturnUrl(candidate) {
     if (!candidate) return TalentosConfig.DEFAULT_RETURN;
-    let url; try { url = new URL(candidate, window.location.href); } catch { return TalentosConfig.DEFAULT_RETURN; }
-    if (!sameOrigin(url.href)) return TalentosConfig.DEFAULT_RETURN;
-    if (isLoginPath(url.pathname)) return TalentosConfig.DEFAULT_RETURN;
-    if (url.pathname === "/" || url.pathname === "") return "index.html" + url.search + url.hash;
-    return url.pathname + url.search + url.hash;
+    let u; try { u = new URL(candidate, location.href); } catch { return TalentosConfig.DEFAULT_RETURN; }
+    if (!sameOrigin(u.href)) return TalentosConfig.DEFAULT_RETURN;
+    if (isLoginPath(u.pathname)) return TalentosConfig.DEFAULT_RETURN;
+    if (u.pathname === "/" || u.pathname === "") return "index.html" + u.search + u.hash;
+    return u.pathname + u.search + u.hash;
   }
-  async function ensureFirebaseAuthReady() {
+  async function ensureAuthReady() {
     const auth = firebase.auth();
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    return new Promise((resolve) => {
-      const unsub = auth.onAuthStateChanged((user) => { unsub(); resolve(user); });
-    });
+    try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch {}
+    return new Promise((resolve)=>{ const off = auth.onAuthStateChanged(u=>{ off(); resolve(u); }); });
   }
   function emailDomainAllowed(email) {
-    if (!email || typeof email !== "string") return false;
-    const domain = email.slice(email.lastIndexOf("@")+1).toLowerCase();
-    return TalentosConfig.ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith("." + d));
+    if (!email) return false; const d = String(email).split("@").pop().toLowerCase();
+    return TalentosConfig.ALLOWED_DOMAINS.some(dom => d === dom || d.endsWith("." + dom));
   }
-  async function protect(options) {
-    const cfg = Object.assign({ loginPage: TalentosConfig.LOGIN_PAGE }, options || {});
-    const params = new URLSearchParams(window.location.search);
+  async function protect(opts) {
+    const cfg = Object.assign({ loginPage: TalentosConfig.LOGIN_PAGE }, opts || {});
+    const params = new URLSearchParams(location.search);
     const requestedReturn = params.get("return");
-    const currentPath = window.location.pathname + window.location.search + window.location.hash;
-    const returnTarget = safeReturnUrl(requestedReturn || currentPath);
+    const current = location.pathname + location.search + location.hash;
+    const returnTarget = safeReturnUrl(requestedReturn || current);
     const auth = firebase.auth();
-    let user = await ensureFirebaseAuthReady();
-    if (!user) { window.location.replace(cfg.loginPage + "?return=" + encodeURIComponent(returnTarget)); return; }
-    if (!emailDomainAllowed(user.email)) {
-      try { await auth.signOut(); } catch (e) {}
-      window.location.replace(cfg.loginPage + "?error=forbidden&return=" + encodeURIComponent(returnTarget));
-      return;
-    }
+    const user = await ensureAuthReady();
+    if (!user) { location.replace(cfg.loginPage + "?return=" + encodeURIComponent(returnTarget)); return; }
+    if (!emailDomainAllowed(user.email)) { try { await auth.signOut(); } catch{}; location.replace(cfg.loginPage + "?error=forbidden&return=" + encodeURIComponent(returnTarget)); return; }
     global.TalentosAuthGuard = global.TalentosAuthGuard || {};
     global.TalentosAuthGuard.currentUser = { uid: user.uid, email: user.email, displayName: user.displayName || null };
   }
