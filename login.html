@@ -90,7 +90,7 @@
 
     // Botão: tenta POPUP primeiro; se falhar, usa REDIRECT
     const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
+    provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br', tenant: 'cba0be9f-94ad-4a26-b291-fa90af7491ee' });
     const FLAG = 'talentos_login_inflight';
 
     async function doLogin() {
@@ -134,66 +134,6 @@
     document.getElementById("btnLogin")?.addEventListener("click", doLogin);
   })();
   </script>
-
-<script>
-  let __loginInFlight = false;
-  async function loginWithMicrosoft() {
-    if (__loginInFlight) {
-      console.warn('Login já em andamento, ignorando novo clique.');
-      return;
-    }
-    __loginInFlight = true;
-    const btn = document.getElementById('btnLogin') || document.querySelector('button');
-    if (btn) btn.disabled = true;
-
-    try {
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
-     provider.setCustomParameters({
-    prompt: 'select_account',
-    domain_hint: 'talentosconsultoria.com.br',
-    tenant: 'cba0be9f-94ad-4a26-b291-f9a0f7491ee'
-});
-      const result = await firebase.auth().signInWithPopup(provider);
-      // sucesso
-      window.location.href = '/index.html';
-    } catch (e) {
-      console.error('[login popup] erro:', e);
-      // Fallback: se popup bloqueado ou cancelado, tenta redirect
-      const code = (e && e.code) || '';
-      if (code.includes('popup') || code.includes('cancelled')) {
-        try {
-          const provider = new firebase.auth.OAuthProvider('microsoft.com');
-          provider.setCustomParameters({
-            prompt: 'select_account',
-            domain_hint: 'talentosconsultoria.com.br',
-            tenant: (window.TalentosConfig && (TalentosConfig.AAD_TENANT_ID || TalentosConfig.AAD_TENANT)) || 'organizations'
-          });
-          await firebase.auth().signInWithRedirect(provider);
-          return;
-        } catch (e2) {
-          console.error('[login redirect] erro:', e2);
-          alert('Não foi possível abrir o login. Tente novamente.');
-        }
-      } else {
-        alert('Falha no login: ' + (e && e.message ? e.message : e));
-      }
-    } finally {
-      __loginInFlight = false;
-      if (btn) btn.disabled = false;
-    }
-  }
-
-  // Se existir um botão padrão, reatribuir evento
-  window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('btnLogin') || document.querySelector('button');
-    if (btn) {
-      btn.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        loginWithMicrosoft();
-      });
-    }
-  });
-</script>
 
 </body>
 </html>

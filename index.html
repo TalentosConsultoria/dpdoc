@@ -105,10 +105,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Provider Microsoft
   const provider = new firebase.auth.OAuthProvider("microsoft.com");
-  provider.setCustomParameters({
-    prompt: "select_account",
-    domain_hint: APP.allowedDomain
-  });
+  provider.setCustomParameters({ prompt: "select_account", domain_hint: APP.allowedDomain, tenant: "cba0be9f-94ad-4a26-b291-fa90af7491ee" });
 
   // Guardião simples: deixa entrar só e-mails do domínio
   const domainOk = (email) => typeof email === "string" && email.toLowerCase().endsWith("@" + APP.allowedDomain);
