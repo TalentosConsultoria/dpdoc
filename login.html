@@ -1,117 +1,53 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script src="./config.js"></script>
-  <script src="./auth-guard.js"></script>
-  <style>body { background: #f7f7f7; }</style>
-</head>
-<body class="min-h-screen flex items-center justify-center">
-  <div class="bg-white rounded-2xl shadow p-6 w-full max-w-md">
-    <h1 class="text-2xl font-semibold mb-4">Acesso Talentos Consultoria</h1>
-    <p class="text-sm text-gray-600 mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+<script>
+(function() {
+    let returnUrl = TalentosAuthGuard.safeReturnUrl(rawReturn) || TalentosConfig.DEFAULT_RETURN;
+    if (returnUrl === "/" || returnUrl === "") { returnUrl = "index.html"; }
+    const status = document.getElementById("status");
+    const warn = document.getElementById("warnConfig");
 
-    <div id="warnConfig" class="hidden p-3 rounded-md text-sm mb-4 bg-yellow-50 text-yellow-800 border border-yellow-200">
-      Sua configuração Firebase está incompleta (placeholders detectados). Edite <code>config.js</code> e cole sua <em>firebaseConfig</em> real.
-    </div>
+    try { 
+        if (window.__TalentosHasPlaceholderConfig && !_TalentosHasPlaceholderConfig()) 
+            warn.classList.remove("hidden");
+    } catch(e) {}
 
-    <div id="status" class="text-sm text-gray-700 mb-4"></div>
-
-    <button id="btnLogin" class="w-full py-2 rounded-xl border hover:shadow">
-      Entrar com Microsoft
-    </button>
-
-    <p class="text-xs text-gray-500 mt-4">
-      Ao continuar, você concorda com a política de uso e segurança.
-    </p>
-  </div>
-
-  <script>
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      const error = params.get("error");
-      const rawReturn = params.get("return");
-      let returnUrl = TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN);
-      if (returnUrl === "/" || returnUrl === "") { returnUrl = "index.html"; }
-      const status = document.getElementById("status");
-      const warn = document.getElementById("warnConfig");
-
-      try { if (window.__TalentosHasPlaceholderConfig && __TalentosHasPlaceholderConfig()) warn.classList.remove("hidden"); } catch (e) {}
-
-      if (error === "forbidden") {
+    if (error === "forbidden") {
         status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-      }
+    }
 
-      const auth = firebase.auth();
-      // Garante persistência local antes de qualquer operação
-      try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) { console.warn('setPersistence falhou', e); }
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
+    const auth = firebase.auth();
 
-      const FLAG = 'talentos_login_inflight';
-
-      async function handleResult() {
+    // Garante persistência local antes de qualquer operação
+    (async () => {
         try {
-          const result = await auth.getRedirectResult();
-          if (result && result.user) {
-            if (TalentosAuthGuard.emailDomainAllowed(result.user.email)) {
-              window.location.replace(returnUrl);
-              return;
-            } else {
-              await auth.signOut();
-              status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-              return;
-            }
-          }
-        } catch (e) {
-          console.error(e);
-          const msg = (e && (e.code || e.message)) ? `${e.code} – ${e.message}` : "Erro ao processar retorno do login.";
-          status.textContent = msg + " Revise Authorized domains e Redirect URI.";
-        } finally {
-          sessionStorage.removeItem(FLAG);
+            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        } catch(e) {
+            console.warn('setPersistence failed', e);
         }
-      }
-
-      async function doLoginRedirect() {
-        if (sessionStorage.getItem(FLAG) === '1') return;
-        sessionStorage.setItem(FLAG, '1');
-        status.textContent = "Redirecionando para o provedor de login...";
-        try {
-          await auth.signInWithRedirect(provider);
-        } catch (e) {
-          console.error(e);
-          sessionStorage.removeItem(FLAG);
-          const msg = (e && (e.code || e.message)) ? `${e.code} – ${e.message}` :
-                      "Falha ao iniciar login por redirecionamento.";
-          status.textContent = msg + " Revise Authorized domains e Redirect URI.";
-        }
-      }
-
-      document.getElementById("btnLogin").addEventListener("click", doLoginRedirect);
-      handleResult();
-
-      // Redireciona imediatamente se já houver sessão válida (pós-retorno ou refresh)
-      auth.onAuthStateChanged(async (u) => {
-        if (u) {
-          console.log('[login] onAuthStateChanged user=', u.email);
-          if (TalentosAuthGuard.emailDomainAllowed(u.email)) {
-            let target = returnUrl;
-            if (target === "/" || target === "") target = "index.html";
-            window.location.replace(target);
-          } else {
-            try { await auth.signOut(); } catch(e) {}
-          }
-        } else {
-          console.log('[login] onAuthStateChanged: sem usuário');
-        }
-      });
-
     })();
-  </script>
-</body>
-</html>
+
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
+
+    const FLAG = 'talentos_login_inflight';
+
+    async function handleResult() {
+        try {
+            const result = await auth.getRedirectResult();
+            if (result && result.user) {
+                if (TalentosAuthGuard.emailDomainAllowed(result.user.email)) {
+                    window.location.replace(returnUrl);
+                    return;
+                } else {
+                    await auth.signOut();
+                    status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+                    return;
+                }
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    handleResult();
+})();
+</script>
