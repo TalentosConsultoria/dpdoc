@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<style>html[data-auth="checking"] body{visibility:hidden}</style>
+
+<script>
+  // Early guard: marca como "checking" para evitar exibir conteúdo antes da verificação
+  try { document.documentElement.setAttribute('data-auth','checking'); } catch(_) {}
+</script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Corrigir CPFs com Base em Relatório</title>
