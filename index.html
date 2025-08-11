@@ -1,134 +1,112 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<style>html[data-auth="checking"] body{visibility:hidden}</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu Principal - Talentos Consultoria</title>
 
-<script>
-  // Early guard: marca como "checking" para evitar exibir conteúdo antes da verificação
-  try { document.documentElement.setAttribute('data-auth','checking'); } catch(_) {}
-</script>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu Principal - Talentos Consultoria</title>
-
-    <!-- Incluindo Tailwind CSS para um design responsivo e moderno -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Configuração para usar a fonte Inter e cores personalizadas da logo -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: '#004aad', /* Cor azul escura da logo */
-                        secondary: '#196dff', /* Cor azul mais clara da logo */
-                        background: '#f1f5f9',
-                        card: '#ffffff',
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Firebase Auth Guard -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="./config.js"></script>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    try {
-      if (!window.firebase?.apps?.length) {
-        firebase.initializeApp(TalentosConfig.firebaseConfig);
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'] },
+          colors: {
+            primary:'#004aad',
+            secondary:'#196dff',
+            background:'#f1f5f9',
+            card:'#ffffff'
+          }
+        }
       }
-      // Redireciona para login se não autenticado
-      firebase.auth().onAuthStateChanged(function(u){
-        if (!u) { window.location.replace('/login.html'); }
-      });
-      window.__dpdocSignOut = async function(){
-        try { await firebase.auth().signOut(); window.location.replace('/login.html'); } catch(e){ console.error(e); }
-      };
-    } catch(e) { console.error('Auth guard init error:', e); }
+    };
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Oculta o body até a verificação de autenticação -->
+  <style>
+    body{opacity:0;transition:opacity .2s ease}
+    html[data-auth="ok"] body{opacity:1}
+  </style>
+
+  <!-- Firebase (compat) + config + guard -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script defer src="config.js"></script>
+  <script defer src="auth-guard.js"></script>
+  <script>
+    // Expor uma função de sair para o botão
+    window.addEventListener('DOMContentLoaded', () => {
+      window.__dpdocSignOut = async () => {
+        try {
+          if (window.firebase && firebase.apps?.length) {
+            await firebase.auth().signOut();
+          }
+          location.href = "index.html";
+        } catch(e){ console.error(e); }
+      };
+    });
+  </script>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen font-sans">
-
-    <!-- Header / Navbar com a logo e os links no canto superior direito -->
-    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center">
-            <!-- Logo com link para a página principal -->
-            <a href="index.html" class="flex items-center space-x-2">
-                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
-                <!-- Alterado a cor do texto para 'red-700' e mantido o negrito -->
-                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
-            </a>
-            <!-- Links de navegação no canto superior direito -->
-            <nav class="relative">
-                <!-- Botão do dropdown para "Ferramentas" -->
-                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
-                    <span>Ferramentas</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <!-- Menu do dropdown que será exibido/ocultado com JavaScript -->
-                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
-                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        QLP
-                    </a>
-                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        PDF
-                    </a>
-                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Bdoc
-                    </a>
-                </div>
-            
-            <button onclick="window.__dpdocSignOut && window.__dpdocSignOut()" class="ml-4 px-3 py-1.5 rounded-md bg-red-600 text-white text-sm shadow hover:bg-red-700 transition">
-              Sair
-            </button>
-
-                </nav>
+  <!-- Header / Navbar -->
+  <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="index.html" class="flex items-center space-x-2">
+        <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+        <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+      </a>
+      <nav class="relative flex items-center gap-3">
+        <!-- Dropdown -->
+        <div class="relative">
+          <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+            <span>Ferramentas</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+            <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
+            <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
+            <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+          </div>
         </div>
-    </header>
+        <!-- Sair -->
+        <button onclick="window.__dpdocSignOut && window.__dpdocSignOut()" class="px-3 py-2 rounded-md bg-red-600 text-white text-sm shadow hover:bg-red-700 transition">
+          Sair
+        </button>
+      </nav>
+    </div>
+  </header>
 
-    <!-- Seção principal da página com a mensagem de boas-vindas -->
-    <main class="flex-grow flex justify-center items-center p-4">
-        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
-            <p class="text-md md:text-lg text-gray-600">
-                Utilize os links acima para acessar as ferramentas que você precisa.
-            </p>
-        </div>
-    </main>
-    
-    <!-- Rodapé simples -->
-    <footer class="bg-gray-800 text-white text-center p-4">
-        <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
-    </footer>
+  <main class="flex-grow flex justify-center items-center p-4">
+    <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
+      <p class="text-md md:text-lg text-gray-600">
+        Utilize os links acima para acessar as ferramentas que você precisa.
+      </p>
+    </div>
+  </main>
 
-    <!-- Script para controlar o menu suspenso (dropdown) -->
-    <script>
-        document.getElementById('tools-dropdown-button').addEventListener('click', function() {
-            var dropdownMenu = document.getElementById('tools-dropdown-menu');
-            dropdownMenu.classList.toggle('hidden');
-        });
+  <footer class="bg-gray-800 text-white text-center p-4">
+    <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
+  </footer>
 
-        // Fecha o dropdown se o usuário clicar fora dele
-        window.addEventListener('click', function(event) {
-            if (!event.target.matches('#tools-dropdown-button, #tools-dropdown-button *')) {
-                var dropdownMenu = document.getElementById('tools-dropdown-menu');
-                if (!dropdownMenu.classList.contains('hidden')) {
-                    dropdownMenu.classList.add('hidden');
-                }
-            }
-        });
-    </script>
+  <script>
+    // Dropdown toggle
+    document.addEventListener('click', (ev) => {
+      const btn = document.getElementById('tools-dropdown-button');
+      const menu = document.getElementById('tools-dropdown-menu');
+      if (btn.contains(ev.target)) {
+        menu.classList.toggle('hidden');
+      } else if (!menu.contains(ev.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+  </script>
 </body>
 </html>
