@@ -1,101 +1,22 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
-  <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script data-cfasync="false" src="./config.js?v=3.6"></script>
-  <script data-cfasync="false" src="./auth-guard.js?v=3.6"></script>
-  <style>body { background: #f7f7f7; }</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acesso - Talentos Consultoria</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <!-- MSAL browser -->
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/msal-init.js" defer></script>
 </head>
-<body class="min-h-screen flex items-center justify-center">
-  <div class="bg-white rounded-2xl shadow p-6 w-full max-w-md">
-    <h1 class="text-2xl font-semibold mb-4">Acesso Talentos Consultoria</h1>
-    <p class="text-sm text-gray-600 mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
-    <div id="status" class="text-sm text-gray-700 mb-4"></div>
-    <button id="btnLogin" class="w-full py-2 rounded-xl border hover:shadow">Entrar com Microsoft</button>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Entrando com Microsoft…</h1>
+      <p class="muted">Se nada acontecer em alguns segundos, atualize a página.</p>
+      <p class="muted">Tenant e domínio restritos: @talentosconsultoria.com.br</p>
+    </div>
   </div>
-
-  <script>
-  (function() {
-    const params = new URLSearchParams(location.search);
-    const error = params.get("error");
-    const rawReturn = params.get("return");
-    let returnUrl = (window.TalentosAuthGuard ? TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN) : (rawReturn || "index.html"));
-    if (!returnUrl || returnUrl === "/" ) returnUrl = "index.html";
-
-    const status = document.getElementById("status") || { textContent: "" };
-    const auth = firebase.auth();
-
-    if (error === "forbidden") {
-      status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-    }
-
-    function shouldRedirect(user) {
-      if (!user) return false;
-      if (!window.TalentosAuthGuard) return true;
-      try { return TalentosAuthGuard.emailDomainAllowed(user.email); }
-      catch { return true; }
-    }
-
-    let redirected = false;
-    auth.onAuthStateChanged(function(u) {
-      if (redirected) return;
-      if (u && shouldRedirect(u)) {
-        redirected = true;
-        location.replace(returnUrl);
-      } else if (u && window.TalentosAuthGuard) {
-        auth.signOut().finally(() => {
-          status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-        });
-      }
-    });
-
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e => console.warn("[login] setPersistence", e));
-
-    (async function handleResult() {
-      try {
-        const result = await auth.getRedirectResult();
-        if (!redirected && result && result.user) {
-          if (shouldRedirect(result.user)) {
-            redirected = true;
-            location.replace(returnUrl);
-            return;
-          } else {
-            await auth.signOut();
-            status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-          }
-        }
-      } catch(e){
-      console.error('[login popup] erro:', e);
-      const code = (e && e.code) || '';
-      // Mostrar orientação ao usuário para habilitar pop-ups e 3rd-party cookies
-      const msg = document.getElementById('status') || document.body;
-      if (msg) {
-        const note = document.createElement('div');
-        note.style.whiteSpace = 'pre-wrap';
-        note.style.marginTop = '12px';
-        note.textContent = 'Não foi possível abrir o popup de login.
-'
-          + 'Por favor, habilite pop-ups para este site e permita cookies de terceiros para: '
-          + 'talentosbd-e4206.firebaseapp.com e login.microsoftonline.com. '
-          + 'Depois, clique novamente em "Entrar com Microsoft".';
-        msg.appendChild(note);
-      }
-    } catch (e2) {
-          console.error("[login] signInWithRedirect", e2);
-          sessionStorage.removeItem(FLAG);
-          status.textContent = (e2 && (e2.code || e2.message)) ? (e2.code + " – " + e2.message) :
-                               "Falha ao iniciar login.";
-        }
-      }
-    }
-
-    document.getElementById("btnLogin")?.addEventListener("click", doLogin);
-  })();
-  </script>
 </body>
 </html>
