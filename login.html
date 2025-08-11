@@ -4,39 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acesso - Talentos Consultoria</title>
-  <link rel="stylesheet" href="assets/css/styles.css"><!-- Loader robusto para MSAL com fallbacks e sem interferência do Rocket Loader -->
-<script data-cfasync="false">
-(function(){
-  function appendScript(src, onload, onerror){
-    var s = document.createElement('script');
-    s.src = src;
-    s.async = false;
-    s.defer = false;
-    s.onload = onload;
-    s.onerror = onerror || function(){ console.error("Falha ao carregar:", src); };
-    document.head.appendChild(s);
+  <link rel="stylesheet" href="assets/css/styles.css"><!-- MSAL local vendorizado (síncrono) -->
+<script src="assets/js/vendor/msal-browser.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/msal-init.js"></script>
+<script>
+  if (!window.msal) {
+    const p = document.getElementById('status') || document.body;
+    const msg = "MSAL local não encontrado. Coloque assets/js/vendor/msal-browser.min.js e recarregue.";
+    if (p) { const s = document.createElement('p'); s.className = 'muted'; s.textContent = msg; p.appendChild(s); }
+    console.error(msg);
   }
-  var cdns = [
-    "https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js",
-    "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js",
-    "https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"
-  ];
-  var i = 0;
-  function tryNext(){
-    if (i >= cdns.length) {
-      console.error("MSAL não carregou de nenhum CDN.");
-      return;
-    }
-    appendScript(cdns[i++], function(){
-      if (!window.msal) { tryNext(); return; }
-      // Carrega o init somente depois que o MSAL estiver disponível
-      appendScript("assets/js/msal-init.js");
-    }, function(){ tryNext(); });
-  }
-  tryNext();
-})();
 </script>
-<script src="assets/js/config.js" defer></script>
 </head>
 <body>
   <div class="container">
