@@ -15,22 +15,104 @@
 <button id="btnLogin" class="w-full py-2 rounded-xl border hover:shadow">Entrar com Microsoft</button>
 </div>
 <script>
-(function(){
- const p=new URLSearchParams(location.search);
- const error=p.get("error"); const rawReturn=p.get("return");
- let returnUrl=(window.TalentosAuthGuard?TalentosAuthGuard.safeReturnUrl(rawReturn||TalentosConfig.DEFAULT_RETURN):"index.html");
- if(!returnUrl||returnUrl==="/") returnUrl="index.html";
- const status=document.getElementById("status")||{textContent:""};
- const auth=firebase.auth();
- if(error==="forbidden"){ status.textContent="Conta fora do domínio permitido. Use seu e-mail corporativo."; }
- let redirected=false;
- auth.onAuthStateChanged(function(u){ if(redirected) return; if(u&&window.TalentosAuthGuard&&TalentosAuthGuard.emailDomainAllowed(u.email)){ redirected=true; location.replace(returnUrl);} });
- auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e=>console.warn("[login] setPersistence",e));
- (async function handleResult(){ try{ const result=await auth.getRedirectResult(); if(!redirected&&result&&result.user){ if(TalentosAuthGuard.emailDomainAllowed(result.user.email)){ redirected=true; location.replace(returnUrl); return; } else { await auth.signOut(); status.textContent="Conta fora do domínio permitido. Use seu e-mail corporativo."; } } } catch(e){ console.error("[login] getRedirectResult", e); status.textContent=(e&&(e.code||e.message))?(e.code+" – "+e.message):"Erro ao processar retorno do login."; } })();
- let tries=0; const iv=setInterval(function(){ if(redirected){ clearInterval(iv); return; } const u=auth.currentUser; if(u&&window.TalentosAuthGuard&&TalentosAuthGuard.emailDomainAllowed(u.email)){ redirected=true; clearInterval(iv); location.replace(returnUrl); } if(++tries>=10) clearInterval(iv); }, 500);
- const provider=new firebase.auth.OAuthProvider('microsoft.com'); provider.setCustomParameters({prompt:'select_account',domain_hint:'talentosconsultoria.com.br'});
- const FLAG='talentos_login_inflight';
- async function doLoginRedirect(){ if(sessionStorage.getItem(FLAG)==='1') return; sessionStorage.setItem(FLAG,'1'); try{ await auth.signInWithRedirect(provider);} catch(e){ console.error("[login] signInWithRedirect",e); sessionStorage.removeItem(FLAG); status.textContent=(e&&(e.code||e.message))?(e.code+" – "+e.message):"Falha ao iniciar login por redirecionamento."; } }
- document.getElementById("btnLogin")?.addEventListener("click", doLoginRedirect);
+(function() {
+  const params = new URLSearchParams(location.search);
+  const rawReturn = params.get("return");
+  const error = params.get("error");
+
+  let returnUrl = (window.TalentosAuthGuard
+    ? TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN)
+    : (rawReturn || "index.html"));
+  if (!returnUrl || returnUrl === "/") returnUrl = "index.html";
+
+  const status = document.getElementById("status") || { textContent: "" };
+  const auth = firebase.auth();
+
+  if (error === "forbidden") {
+    status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+  }
+
+  // Se o guard já existir, valida domínio; se não, deixa o index.html validar.
+  function shouldRedirect(user) {
+    if (!user) return false;
+    if (!window.TalentosAuthGuard) return true; // guard ainda não carregou -> deixa o index validar
+    try { return TalentosAuthGuard.emailDomainAllowed(user.email); }
+    catch { return true; } // qualquer erro -> deixa o index validar
+  }
+
+  let redirected = false;
+
+  // 1) Listener imediato
+  auth.onAuthStateChanged(function(u) {
+    if (redirected) return;
+    if (u && shouldRedirect(u)) {
+      redirected = true;
+      location.replace(returnUrl);
+    } else if (u && window.TalentosAuthGuard) {
+      // Usuário logado mas domínio barrado -> sai e mostra mensagem
+      auth.signOut().finally(() => {
+        status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+      });
+    }
+  });
+
+  // 2) Persistência (não bloqueia)
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch(e => console.warn("[login] setPersistence", e));
+
+  // 3) Pós-redirect oficial
+  (async function handleResult() {
+    try {
+      const result = await auth.getRedirectResult();
+      if (!redirected && result && result.user) {
+        if (shouldRedirect(result.user)) {
+          redirected = true;
+          location.replace(returnUrl);
+          return;
+        } else {
+          await auth.signOut();
+          status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
+        }
+      }
+    } catch (e) {
+      console.error("[login] getRedirectResult", e);
+      status.textContent = (e && (e.code || e.message))
+        ? (e.code + " – " + e.message)
+        : "Erro ao processar retorno do login.";
+    }
+  })();
+
+  // 4) Fallback: polling 5s
+  let tries = 0;
+  const iv = setInterval(function() {
+    if (redirected) { clearInterval(iv); return; }
+    const u = auth.currentUser;
+    if (u && shouldRedirect(u)) {
+      redirected = true;
+      clearInterval(iv);
+      location.replace(returnUrl);
+    }
+    if (++tries >= 10) clearInterval(iv);
+  }, 500);
+
+  // 5) Botão de login
+  const provider = new firebase.auth.OAuthProvider('microsoft.com');
+  provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br' });
+  const FLAG = 'talentos_login_inflight';
+
+  async function doLoginRedirect() {
+    if (sessionStorage.getItem(FLAG) === '1') return;
+    sessionStorage.setItem(FLAG, '1');
+    try { await auth.signInWithRedirect(provider); }
+    catch (e) {
+      console.error("[login] signInWithRedirect", e);
+      sessionStorage.removeItem(FLAG);
+      status.textContent = (e && (e.code || e.message))
+        ? (e.code + " – " + e.message)
+        : "Falha ao iniciar login por redirecionamento.";
+    }
+  }
+
+  document.getElementById("btnLogin")?.addEventListener("click", doLoginRedirect);
 })();
-</script></body></html>
+</script>
