@@ -69,60 +69,23 @@
             status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
           }
         }
-      } catch (e) {
-        console.error("[login] getRedirectResult", e);
-        status.textContent = (e && (e.code || e.message)) ? (e.code + " – " + e.message) : "Erro ao processar retorno do login.";
+      } catch(e){
+      console.error('[login popup] erro:', e);
+      const code = (e && e.code) || '';
+      // Mostrar orientação ao usuário para habilitar pop-ups e 3rd-party cookies
+      const msg = document.getElementById('status') || document.body;
+      if (msg) {
+        const note = document.createElement('div');
+        note.style.whiteSpace = 'pre-wrap';
+        note.style.marginTop = '12px';
+        note.textContent = 'Não foi possível abrir o popup de login.
+'
+          + 'Por favor, habilite pop-ups para este site e permita cookies de terceiros para: '
+          + 'talentosbd-e4206.firebaseapp.com e login.microsoftonline.com. '
+          + 'Depois, clique novamente em "Entrar com Microsoft".';
+        msg.appendChild(note);
       }
-    })();
-
-    // Fallback polling
-    let tries = 0;
-    const iv = setInterval(function() {
-      if (redirected) { clearInterval(iv); return; }
-      const u = auth.currentUser;
-      if (u && shouldRedirect(u)) {
-        redirected = true;
-        clearInterval(iv);
-        location.replace(returnUrl);
-      }
-      if (++tries >= 10) clearInterval(iv);
-    }, 500);
-
-    // Botão: tenta POPUP primeiro; se falhar, usa REDIRECT
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br', tenant: 'cba0be9f-94ad-4a26-b291-fa90af7491ee' });
-    const FLAG = 'talentos_login_inflight';
-
-    async function doLogin() {
-      // tentativa por popup
-      try {
-        const result = await auth.signInWithPopup(provider);
-        if (result && result.user) {
-          if (shouldRedirect(result.user)) {
-            location.replace(returnUrl);
-          } else {
-            await auth.signOut();
-            status.textContent = "Conta fora do domínio permitido. Use seu e-mail corporativo.";
-          }
-          return;
-        }
-      } catch (e) {
-        // Fallback para redirect em erros comuns de popup
-        const code = e && e.code || "";
-        const popupIssues = [
-          "auth/popup-blocked",
-          "auth/popup-closed-by-user",
-          "auth/cancelled-popup-request",
-          "auth/operation-not-supported-in-this-environment"
-        ];
-        if (!popupIssues.includes(code)) {
-          console.warn("[login] Popup falhou com código diferente; mesmo assim vou tentar redirect:", code);
-        }
-        try {
-          if (sessionStorage.getItem(FLAG) !== '1') sessionStorage.setItem(FLAG, '1');
-          await auth.signInWithRedirect(provider);
-          return;
-        } catch (e2) {
+    } catch (e2) {
           console.error("[login] signInWithRedirect", e2);
           sessionStorage.removeItem(FLAG);
           status.textContent = (e2 && (e2.code || e2.message)) ? (e2.code + " – " + e2.message) :
@@ -134,6 +97,5 @@
     document.getElementById("btnLogin")?.addEventListener("click", doLogin);
   })();
   </script>
-
 </body>
 </html>
