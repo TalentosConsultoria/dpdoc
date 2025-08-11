@@ -1,180 +1,102 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DPDoc • Talentos Consultoria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Principal - Talentos Consultoria</title>
 
-  <!-- Tailwind só para layout rápido (CDN ok para páginas estáticas) -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
+    <!-- Incluindo Tailwind CSS para um design responsivo e moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase compat 10.12.4 (app, auth e firestore) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js" defer></script>
-
-  <style>
-    body{ background:#f7f7f9 }
-    .card{ max-width: 880px }
-    code,kbd{ background:#f3f4f6; padding:2px 6px; border-radius:6px }
-  </style>
-</head>
-<body class="min-h-screen flex items-center justify-center p-6">
-  <div class="card w-full bg-white rounded-2xl shadow p-6">
-    <div class="flex items-center justify-between gap-4 mb-4">
-      <h1 class="text-2xl font-semibold">DPDoc — Talentos Consultoria</h1>
-      <div id="userBox" class="hidden text-right">
-        <div class="text-sm text-gray-600">Autenticado como</div>
-        <div id="userEmail" class="font-medium"></div>
-      </div>
-    </div>
-
-    <!-- Status / mensagens -->
-    <div id="status" class="text-sm text-gray-700 mb-4">Carregando…</div>
-
-    <!-- Botão de login -->
-    <div id="loginBox" class="mb-6 hidden">
-      <button id="btnLogin" class="px-4 py-2 rounded-xl border hover:shadow">
-        Entrar com Microsoft
-      </button>
-      <p class="text-xs text-gray-500 mt-2">
-        Use sua conta corporativa <b>@talentosconsultoria.com.br</b>.
-      </p>
-    </div>
-
-    <!-- Conteúdo protegido -->
-    <div id="app" class="hidden space-y-4">
-      <div class="p-4 rounded-xl bg-gray-50">
-        <div class="font-medium mb-1">Exemplo de acesso ao Firestore</div>
-        <p class="text-sm text-gray-600 mb-3">Clique para gravar e ler um doc de teste.</p>
-        <div class="flex gap-2">
-          <button id="btnWrite" class="px-3 py-2 rounded-lg border">Gravar doc</button>
-          <button id="btnRead"  class="px-3 py-2 rounded-lg border">Ler doc</button>
-        </div>
-        <pre id="out" class="mt-3 text-xs whitespace-pre-wrap"></pre>
-      </div>
-
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-600">
-          Dica: este projeto usa <code>signInWithPopup</code> (sem <kbd>/__/auth/handler</kbd>), então funciona bem no GitHub Pages + Cloudflare.
-        </div>
-        <button id="btnLogout" class="px-3 py-2 rounded-lg border">Sair</button>
-      </div>
-    </div>
-  </div>
-
-<script>
-// ========= CONFIG BÁSICA =========
-const APP = {
-  allowedDomain: "talentosconsultoria.com.br",
-};
-
-// Firebase config do seu projeto (público; ok ficar no front)
-const firebaseConfig = {
-  apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-  authDomain: "talentosbd-e4206.firebaseapp.com",
-  projectId: "talentosbd-e4206",
-  storageBucket: "talentosbd-e4206.firebasestorage.app",
-  messagingSenderId: "580727253031",
-  appId: "1:580727253031:web:5368302ef0da6277788602",
-  measurementId: "G-S464LNX2J9"
-};
-
-// ========= BOOT =========
-window.addEventListener("DOMContentLoaded", () => {
-  const status = (msg) => (document.getElementById("status").textContent = msg ?? "");
-  const show = (id, on) => document.getElementById(id).classList.toggle("hidden", !on);
-
-  try {
-    if (!firebase.apps?.length) firebase.initializeApp(firebaseConfig);
-  } catch(e) {
-    console.error("[config] Erro ao iniciar Firebase", e);
-  }
-
-  const auth = firebase.auth();
-  const db   = firebase.firestore();
-
-  // Persistência local da sessão
-  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-
-  // Provider Microsoft
-  const provider = new firebase.auth.OAuthProvider("microsoft.com");
-  provider.setCustomParameters({
-    prompt: "select_account",
-    domain_hint: APP.allowedDomain
-  });
-
-  // Guardião simples: deixa entrar só e-mails do domínio
-  const domainOk = (email) => typeof email === "string" && email.toLowerCase().endsWith("@" + APP.allowedDomain);
-
-  // UI: ações
-  document.getElementById("btnLogin").addEventListener("click", async () => {
-    status("Abrindo popup de login…");
-    try {
-      await auth.signInWithPopup(provider);
-      // se popup bloqueado, faz fallback para redirect
-    } catch (e) {
-      if (e && (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user")) {
-        status("Popup bloqueado. Tentando redirecionamento…");
-        try { await auth.signInWithRedirect(provider); } catch (err) {
-          console.error("[login redirect] erro:", err);
-          status("Não foi possível iniciar o login. Verifique bloqueio de popups e tente novamente.");
+    <!-- Configuração para usar a fonte Inter e cores personalizadas da logo -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad', /* Cor azul escura da logo */
+                        secondary: '#196dff', /* Cor azul mais clara da logo */
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
+            }
         }
-      } else {
-        console.error("[login popup] erro:", e);
-        status((e?.message) || "Falha no login.");
-      }
-    }
-  });
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex flex-col min-h-screen font-sans">
 
-  document.getElementById("btnLogout").addEventListener("click", async () => {
-    await auth.signOut();
-    location.reload();
-  });
+    <!-- Header / Navbar com a logo e os links no canto superior direito -->
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <!-- Logo com link para a página principal -->
+            <a href="index.html" class="flex items-center space-x-2">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+                <!-- Alterado a cor do texto para 'red-700' e mantido o negrito -->
+                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+            </a>
+            <!-- Links de navegação no canto superior direito -->
+            <nav class="relative">
+                <!-- Botão do dropdown para "Ferramentas" -->
+                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+                    <span>Ferramentas</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <!-- Menu do dropdown que será exibido/ocultado com JavaScript -->
+                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        QLP
+                    </a>
+                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        PDF
+                    </a>
+                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Bdoc
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
 
-  // Ações Firestore (exemplo)
-  document.getElementById("btnWrite").addEventListener("click", async () => {
-    const u = auth.currentUser;
-    if (!u) return;
-    await db.collection("demo").doc(u.uid).set({
-      who: u.email,
-      when: firebase.firestore.FieldValue.serverTimestamp(),
-      hello: "world"
-    }, { merge:true });
-    document.getElementById("out").textContent = "Gravou com sucesso em demo/" + u.uid;
-  });
+    <!-- Seção principal da página com a mensagem de boas-vindas -->
+    <main class="flex-grow flex justify-center items-center p-4">
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
+            <p class="text-md md:text-lg text-gray-600">
+                Utilize os links acima para acessar as ferramentas que você precisa.
+            </p>
+        </div>
+    </main>
+    
+    <!-- Rodapé simples -->
+    <footer class="bg-gray-800 text-white text-center p-4">
+        <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
+    </footer>
 
-  document.getElementById("btnRead").addEventListener("click", async () => {
-    const u = auth.currentUser;
-    if (!u) return;
-    const snap = await db.collection("demo").doc(u.uid).get();
-    document.getElementById("out").textContent = snap.exists ? JSON.stringify(snap.data(), null, 2) : "Nada lido.";
-  });
+    <!-- Script para controlar o menu suspenso (dropdown) -->
+    <script>
+        document.getElementById('tools-dropdown-button').addEventListener('click', function() {
+            var dropdownMenu = document.getElementById('tools-dropdown-menu');
+            dropdownMenu.classList.toggle('hidden');
+        });
 
-  // Estado de autenticação
-  status("Carregando sessão…");
-  auth.onAuthStateChanged(async (user) => {
-    if (user && domainOk(user.email)) {
-      document.getElementById("userEmail").textContent = user.email;
-      show("userBox", true);
-      show("loginBox", false);
-      show("app", true);
-      status("");
-    } else if (user && !domainOk(user.email)) {
-      status("Conta fora do domínio permitido. Saindo…");
-      await auth.signOut();
-      show("app", false);
-      show("userBox", false);
-      show("loginBox", true);
-    } else {
-      // sem sessão
-      show("app", false);
-      show("userBox", false);
-      show("loginBox", true);
-      status("Faça login para continuar.");
-    }
-  });
-});
-</script>
+        // Fecha o dropdown se o usuário clicar fora dele
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('#tools-dropdown-button, #tools-dropdown-button *')) {
+                var dropdownMenu = document.getElementById('tools-dropdown-menu');
+                if (!dropdownMenu.classList.contains('hidden')) {
+                    dropdownMenu.classList.add('hidden');
+                }
+            }
+        });
+    </script>
 </body>
 </html>

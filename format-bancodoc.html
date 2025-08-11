@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corrigir CPFs com Base em Relatório</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input[type="file"] {
+      display: block;
+      margin: 10px 0;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    pre {
+      background-color: #eee;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    /* Estilo para o botão de voltar */
+    .back-button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: #007BFF;
+        color: white;
+        text-decoration: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    .back-button:hover {
+        background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-button">← Voltar para o Menu</a>
+  <div class="container">
+    <h1>Corrigir CPFs com Base em Relatório</h1>
+    <p>Envie abaixo as três planilhas:</p>
+    <label>1. Documentos não Depositados de Admissão:</label>
+    <input type="file" id="admissaoFile" accept=".xlsx,.csv" />
+    <br><br>
+    <label>2. Relatório de Empregados:</label>
+    <input type="file" id="relatorioFile" accept=".xlsx,.csv" />
+    <br><br>
+    <label>3. QLP geral:</label>
+    <input type="file" id="cadastroFile" accept=".xlsx,.csv" />
+    <br><br>
+    <button onclick="processarArquivos()">Corrigir e Baixar Planilha</button>
+    <pre id="relatorioOutput"></pre>
+  </div>
+
+  <script>
+    function normalizarTexto(texto) {
+      if (typeof texto !== 'string') return '';
+      return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
+    }
+
+    function normalizarCPF(cpf) {
+        if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
+        let numeros = String(cpf).replace(/\D/g, '');
+        return numeros.padStart(11, '0');
+    }
+    
+    function excelDateToJSDate(serial) {
+      if (typeof serial !== 'number' || serial <= 0) return serial;
+
+      const utc_days  = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      const fractional_day = serial - Math.floor(serial) + 0.0000001;
+      let total_seconds = Math.floor(86400 * fractional_day);
+      const seconds = total_seconds % 60;
+      total_seconds -= seconds;
+      const minutes = total_seconds / 60 % 60;
+      total_seconds -= minutes * 60;
+      const hours = Math.floor(total_seconds / 3600);
+      const day = String(date_info.getDate()).padStart(2, '0');
+      const month = String(date_info.getMonth() + 1).padStart(2, '0');
+      const year = date_info.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    function formatarCPF(cpf) {
+      const numeros = String(cpf).replace(/\D/g, "");
+      
+      const cpfFormatado = numeros.padStart(11, "0");
+
+      if (cpfFormatado.length === 11) {
+        return cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      }
+      
+      return cpf;
+    }
+
+    async function processarArquivos() {
+      const admissaoInput = document.getElementById('admissaoFile').files[0];
+      const relatorioInput = document.getElementById('relatorioFile').files[0];
+      const cadastroInput = document.getElementById('cadastroFile').files[0];
+      const relatorioOutput = document.getElementById('relatorioOutput');
+      relatorioOutput.textContent = '';
+
+      if (!admissaoInput || !relatorioInput || !cadastroInput) {
+        alert("Envie as três planilhas.");
+        return;
+      }
+
+      const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
+        fileToJson(admissaoInput),
+        fileToJson(relatorioInput),
+        fileToJson(cadastroInput, { header: 1 })
+      ]);
+
+      if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
+          alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
+          return;
+      }
+
+      // -- Etapa 1: Corrigir CPFs na Planilha de Admissão com base no Relatório --
+      const admissaoHeaders = Object.keys(admissaoJson[0] || {});
+      const relatorioHeaders = Object.keys(relatorioJson[0] || {});
+
+      const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
+      const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
+      
+      let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
+      let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("cpf") || h.includes("documento") || h.includes("registro"))];
+
+      const erros = [];
+      if (!colunaNomeAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de nome.");
+      if (!colunaCpfAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de CPF.");
+      if (!colunaNomeRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de nome.");
+      if (!colunaCpfRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de CPF.");
+
+      if (erros.length > 0) {
+        alert(erros.join("\n"));
+        return;
+      }
+
+      const mapaCpfCorreto = new Map();
+      for (const linha of relatorioJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
+        const cpf = linha[colunaCpfRelatorio]?.toString();
+        if (nomeNormalizado && cpf && !cpf.includes("*")) {
+          mapaCpfCorreto.set(nomeNormalizado, cpf);
+        }
+      }
+
+      let cpfsAtualizados = 0;
+      for (const linha of admissaoJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
+        if (mapaCpfCorreto.has(nomeNormalizado)) {
+          linha[colunaCpfAdmissao] = formatarCPF(mapaCpfCorreto.get(nomeNormalizado));
+          cpfsAtualizados++;
+        }
+      }
+      
+      // -- Etapa 2: Adicionar colunas de Cadastro e Admissão da 3ª planilha (QLP) --
+      const qlpData = cadastroRaw;
+      
+      // Índices de coluna para as posições A, H e P (índices 0, 7, 15)
+      const colunaIndiceCadastro = 0;
+      const colunaIndiceAdmissao = 7;
+      const colunaIndiceCpfCadastro = 15;
+      
+      const mapaCadastroAdmissao = new Map();
+      for (const linha of qlpData) {
+          const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
+          const cadastroValue = linha[colunaIndiceCadastro] || '';
+          const admissaoValue = linha[colunaIndiceAdmissao] || '';
+
+          if (cpfNormalizado && cadastroValue && admissaoValue) {
+              mapaCadastroAdmissao.set(cpfNormalizado, {
+                  cadastro: cadastroValue,
+                  admissao: admissaoValue
+              });
+          }
+      }
+
+      // Encontra o índice da coluna de nome na planilha de admissão
+      const nomeColIndexAdmissao = admissaoHeaders.indexOf(colunaNomeAdmissao);
+
+      // Adiciona as novas colunas e preenche com os dados correspondentes
+      const novaPlanilhaFinal = [];
+      const cabecalhoFinal = [...admissaoHeaders];
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Admissão');
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Cadastro');
+      novaPlanilhaFinal.push(cabecalhoFinal);
+      
+      for(const linha of admissaoJson) {
+          const cpfNormalizado = normalizarCPF(linha[colunaCpfAdmissao]);
+          const dadosExtras = mapaCadastroAdmissao.get(cpfNormalizado) || { cadastro: '', admissao: '' };
+          
+          const novaLinha = [...Object.values(linha)];
+          novaLinha.splice(nomeColIndexAdmissao, 0, excelDateToJSDate(dadosExtras.admissao));
+          novaLinha.splice(nomeColIndexAdmissao, 0, dadosExtras.cadastro);
+          novaPlanilhaFinal.push(novaLinha);
+      }
+
+      let mensagem = `✅ Processamento concluído.\n\n`;
+      mensagem += `CPFs atualizados: ${cpfsAtualizados}\n`;
+      mensagem += `Colunas de Cadastro e Admissão adicionadas.`;
+      
+      relatorioOutput.textContent = mensagem;
+
+      // Lógica de download
+      const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
+      const novoWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
+      XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
+    }
+
+    function fileToJson(file, options = {}) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        reader.onload = (e) => {
+          try {
+            let workbook;
+            if (extension === 'csv') {
+              workbook = XLSX.read(e.target.result, { type: 'string', FS: ';' });
+            } else {
+              const data = new Uint8Array(e.target.result);
+              workbook = XLSX.read(data, { type: 'array' });
+            }
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, options);
+            resolve(json);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        reader.onerror = reject;
+
+        if (extension === 'csv') {
+          reader.readAsText(file);
+        } else {
+          reader.readAsArrayBuffer(file);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

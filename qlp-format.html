@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corrigir CPFs com Base em Relatório</title>
+  <!-- Incluindo Tailwind CSS para um design responsivo e moderno -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Inter', 'sans-serif'],
+                },
+                colors: {
+                    primary: '#004aad', /* Cor azul escura da logo */
+                    secondary: '#196dff', /* Cor azul mais clara da logo */
+                    background: '#f1f5f9',
+                    card: '#ffffff',
+                }
+            }
+        }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="flex justify-center items-center min-h-screen p-4 font-sans bg-slate-100">
+  
+  <div class="bg-white p-8 md:p-12 rounded-2xl shadow-xl w-full max-w-md">
+    <!-- O botão foi movido para dentro do container e estilizado com Tailwind -->
+    <a href="index.html" class="flex items-center gap-2 text-primary hover:text-secondary font-medium mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/>
+        </svg>
+        Voltar para o Menu
+    </a>
+    <h1 class="text-3xl md:text-4xl font-bold text-slate-800 mb-4 text-center">Corrigir CPFs com Base em Relatório</h1>
+    <p class="text-md md:text-lg text-gray-600 mb-8 text-center">Envie abaixo as três planilhas:</p>
+    
+    <div class="flex flex-col gap-4">
+      <label for="admissaoFile" class="text-left font-medium text-gray-700">1. Documentos não Depositados de Admissão:</label>
+      <input type="file" id="admissaoFile" accept=".xlsx,.csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-secondary"/>
+      
+      <label for="relatorioFile" class="text-left font-medium text-gray-700">2. Relatório de Empregados:</label>
+      <input type="file" id="relatorioFile" accept=".xlsx,.csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-secondary"/>
+      
+      <label for="cadastroFile" class="text-left font-medium text-gray-700">3. QLP geral:</label>
+      <input type="file" id="cadastroFile" accept=".xlsx,.csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-secondary"/>
+    </div>
+    
+    <button onclick="processarArquivos()" class="w-full mt-8 bg-primary hover:bg-secondary text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:-translate-y-1">Corrigir e Baixar Planilha</button>
+    <pre id="relatorioOutput" class="mt-6 p-4 bg-gray-100 rounded-lg text-left text-sm whitespace-pre-wrap"></pre>
+  </div>
+
+  <script>
+    function normalizarTexto(texto) {
+      if (typeof texto !== 'string') return '';
+      return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
+    }
+
+    function normalizarCPF(cpf) {
+        if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
+        let numeros = String(cpf).replace(/\D/g, '');
+        return numeros.padStart(11, '0');
+    }
+    
+    function excelDateToJSDate(serial) {
+      if (typeof serial !== 'number' || serial <= 0) return serial;
+
+      const utc_days  = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      const fractional_day = serial - Math.floor(serial) + 0.0000001;
+      let total_seconds = Math.floor(86400 * fractional_day);
+      const seconds = total_seconds % 60;
+      total_seconds -= seconds;
+      const minutes = total_seconds / 60 % 60;
+      total_seconds -= minutes * 60;
+      const hours = Math.floor(total_seconds / 3600);
+      const day = String(date_info.getDate()).padStart(2, '0');
+      const month = String(date_info.getMonth() + 1).padStart(2, '0');
+      const year = date_info.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    function formatarCPF(cpf) {
+      const numeros = String(cpf).replace(/\D/g, "");
+      
+      const cpfFormatado = numeros.padStart(11, "0");
+
+      if (cpfFormatado.length === 11) {
+        return cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      }
+      
+      return cpf;
+    }
+
+    async function processarArquivos() {
+      const admissaoInput = document.getElementById('admissaoFile').files[0];
+      const relatorioInput = document.getElementById('relatorioFile').files[0];
+      const cadastroInput = document.getElementById('cadastroFile').files[0];
+      const relatorioOutput = document.getElementById('relatorioOutput');
+      relatorioOutput.textContent = '';
+
+      if (!admissaoInput || !relatorioInput || !cadastroInput) {
+        alert("Envie as três planilhas.");
+        return;
+      }
+
+      const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
+        fileToJson(admissaoInput),
+        fileToJson(relatorioInput),
+        fileToJson(cadastroInput, { header: 1 })
+      ]);
+
+      if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
+          alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
+          return;
+      }
+
+      // -- Etapa 1: Corrigir CPFs na Planilha de Admissão com base no Relatório --
+      const admissaoHeaders = Object.keys(admissaoJson[0] || {});
+      const relatorioHeaders = Object.keys(relatorioJson[0] || {});
+
+      const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
+      const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
+      
+      let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
+      let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+      let colunaCpfRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("cpf") || h.includes("documento") || h.includes("registro"))];
+
+      const erros = [];
+      if (!colunaNomeAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de nome.");
+      if (!colunaCpfAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de CPF.");
+      if (!colunaNomeRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de nome.");
+      if (!colunaCpfRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de CPF.");
+
+      if (erros.length > 0) {
+        alert(erros.join("\n"));
+        return;
+      }
+
+      const mapaCpfCorreto = new Map();
+      for (const linha of relatorioJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
+        const cpf = linha[colunaCpfRelatorio]?.toString();
+        if (nomeNormalizado && cpf && !cpf.includes("*")) {
+          mapaCpfCorreto.set(nomeNormalizado, cpf);
+        }
+      }
+
+      let cpfsAtualizados = 0;
+      for (const linha of admissaoJson) {
+        const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
+        if (mapaCpfCorreto.has(nomeNormalizado)) {
+          linha[colunaCpfAdmissao] = formatarCPF(mapaCpfCorreto.get(nomeNormalizado));
+          cpfsAtualizados++;
+        }
+      }
+      
+      // -- Etapa 2: Adicionar colunas de Cadastro e Admissão da 3ª planilha (QLP) --
+      const qlpData = cadastroRaw;
+      
+      // Índices de coluna para as posições A, H e P (índices 0, 7, 15)
+      const colunaIndiceCadastro = 0;
+      const colunaIndiceAdmissao = 7;
+      const colunaIndiceCpfCadastro = 15;
+      
+      const mapaCadastroAdmissao = new Map();
+      for (const linha of qlpData) {
+          const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
+          const cadastroValue = linha[colunaIndiceCadastro] || '';
+          const admissaoValue = linha[colunaAdmissao] || '';
+
+          if (cpfNormalizado && cadastroValue && admissaoValue) {
+              mapaCadastroAdmissao.set(cpfNormalizado, {
+                  cadastro: cadastroValue,
+                  admissao: admissaoValue
+              });
+          }
+      }
+
+      // Encontra o índice da coluna de nome na planilha de admissão
+      const nomeColIndexAdmissao = admissaoHeaders.indexOf(colunaNomeAdmissao);
+
+      // Adiciona as novas colunas e preenche com os dados correspondentes
+      const novaPlanilhaFinal = [];
+      const cabecalhoFinal = [...admissaoHeaders];
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Admissão');
+      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Cadastro');
+      novaPlanilhaFinal.push(cabecalhoFinal);
+      
+      for(const linha of admissaoJson) {
+          const cpfNormalizado = normalizarCPF(linha[colunaCpfAdmissao]);
+          const dadosExtras = mapaCadastroAdmissao.get(cpfNormalizado) || { cadastro: '', admissao: '' };
+          
+          const novaLinha = [...Object.values(linha)];
+          novaLinha.splice(nomeColIndexAdmissao, 0, excelDateToJSDate(dadosExtras.admissao));
+          novaLinha.splice(nomeColIndexAdmissao, 0, dadosExtras.cadastro);
+          novaPlanilhaFinal.push(novaLinha);
+      }
+
+      let mensagem = `✅ Processamento concluído.\n\n`;
+      mensagem += `CPFs atualizados: ${cpfsAtualizados}\n`;
+      mensagem += `Colunas de Cadastro e Admissão adicionadas.`;
+      
+      relatorioOutput.textContent = mensagem;
+
+      // Lógica de download
+      const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
+      const novoWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
+      XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
+    }
+
+    function fileToJson(file, options = {}) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        reader.onload = (e) => {
+          try {
+            let workbook;
+            if (extension === 'csv') {
+              workbook = XLSX.read(e.target.result, { type: 'string', FS: ';' });
+            } else {
+              const data = new Uint8Array(e.target.result);
+              workbook = XLSX.read(data, { type: 'array' });
+            }
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, options);
+            resolve(json);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        reader.onerror = reject;
+
+        if (extension === 'csv') {
+          reader.readAsText(file);
+        } else {
+          reader.readAsArrayBuffer(file);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

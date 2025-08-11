@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juntar, Reorganizar, Excluir e Baixar Páginas de PDFs</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            padding-bottom: 120px;
+        }
+        .container { max-width: 900px; margin: auto; }
+        #dropzone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #thumbnails-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            min-height: 100px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .page-thumbnail {
+            width: 180px;
+            height: 240px;
+            border: 1px solid #aaa;
+            cursor: move;
+            position: relative;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .page-thumbnail canvas {
+            max-width: 100%;
+            height: 85%;
+        }
+        .page-thumbnail .delete-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding-bottom: 2px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .page-thumbnail .delete-button:hover {
+            opacity: 1;
+        }
+        .page-thumbnail span {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .preview-icon {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 123, 255, 0.8);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .preview-icon:hover {
+            opacity: 1;
+        }
+        /* ESTILOS DA BARRA DE DOWNLOAD REVISADOS */
+        #fixed-download-bar {
+            position: fixed; /* Corrige a barra de rolagem */
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 15px 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .download-controls {
+            display: flex;
+            flex-direction: column; /* Organiza rótulo e input em coluna */
+            align-items: flex-start; /* Alinha o conteúdo à esquerda */
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .download-controls label {
+            white-space: nowrap;
+            text-align: left;
+            width: 100%;
+        }
+        .download-controls input {
+            padding: 8px;
+            width: 100%;
+            max-width: 250px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        /* Estilo para os botões de geração de PDF em verde */
+        .pdf-button-green {
+            padding: 10px 20px;
+            font-size: 16px;
+            white-space: nowrap;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .pdf-button-green:hover {
+            background-color: #218838;
+        }
+        /* Estilo para o novo botão de limpar em vermelho */
+        .pdf-button-red {
+            padding: 10px 20px;
+            font-size: 16px;
+            white-space: nowrap;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .pdf-button-red:hover {
+            background-color: #c0392b;
+        }
+        /* Estilo para o botão de importar */
+        .pdf-import-button {
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .pdf-import-button:hover {
+            background-color: #0056b3;
+        }
+        .pdf-import-button .icon {
+            margin-right: 8px;
+        }
+        /* Estilo do icone do botão limpar */
+        .pdf-clear-button .icon {
+            margin-right: 8px;
+        }
+        .icon {
+            margin-right: 8px;
+        }
+        /* ESTILOS DO MODAL DE VISUALIZAÇÃO */
+        #preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        #preview-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border: 1px solid #888;
+            max-width: 90%;
+            position: relative;
+        }
+        #preview-canvas {
+            width: 100%;
+            height: auto;
+        }
+        #close-preview {
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 5px 10px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1002;
+        }
+        #close-preview:hover,
+        #close-preview:focus {
+            background-color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .navigation-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1002;
+        }
+        #prev-page {
+            left: 20px;
+        }
+        #next-page {
+            right: 20px;
+        }
+        /* ESTILO DO BOTÃO HOME */
+        .home-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+        .home-button:hover {
+            background-color: #0056b3;
+        }
+        /* Estilos do carregamento */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1003;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="home-button">← Voltar para a Home</a>
+    <div class="container">
+        <h1>Juntar, Reorganizar e Excluir Páginas de PDFs</h1>
+        
+        <div id="dropzone">
+            Arraste e solte seus arquivos PDF aqui, ou clique para selecioná-los.
+            <input type="file" id="pdfFiles" multiple accept=".pdf" style="display: none;">
+        </div>
+
+        <div id="thumbnails-container">
+            <p id="placeholder">As miniaturas das páginas aparecerão aqui.</p>
+        </div>
+    </div>
+
+    <div id="fixed-download-bar">
+        <div class="download-controls">
+            <label for="output-filename">Nome do arquivo:</label>
+            <input type="text" id="output-filename" placeholder="meu-documento.pdf" value="pdfs_juntos_e_editados.pdf">
+        </div>
+        <div class="download-controls">
+            <label for="page-range">Intervalo de páginas (ex: 1-3, 5, 8-10):</label>
+            <input type="text" id="page-range" placeholder="1-3, 5, 8">
+        </div>
+        <div class="button-group">
+            <button class="pdf-import-button" onclick="fileInput.click()">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V9.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                </svg>
+                Importar PDFs
+            </button>
+            <button class="pdf-button-red" onclick="limparPdfs()">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+                Limpar PDFs
+            </button>
+            <button class="pdf-button-green" onclick="baixarIntervaloDePaginas()">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+                Baixar Selecionados
+            </button>
+            <button class="pdf-button-green" onclick="juntarPdfs()">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+                Baixar Todos
+            </button>
+        </div>
+    </div>
+
+    <div id="preview-modal">
+        <button id="prev-page" class="navigation-button">❮</button>
+        <div id="preview-content">
+            <span id="close-preview">&times;</span>
+            <canvas id="preview-canvas"></canvas>
+        </div>
+        <button id="next-page" class="navigation-button">❯</button>
+    </div>
+    
+    <!-- Novo overlay de carregamento -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const { PDFDocument } = PDFLib;
+        const thumbnailsContainer = document.getElementById('thumbnails-container');
+        const fileInput = document.getElementById('pdfFiles');
+        const dropzone = document.getElementById('dropzone');
+        const outputFilenameInput = document.getElementById('output-filename');
+        const pageRangeInput = document.getElementById('page-range');
+        const previewModal = document.getElementById('preview-modal');
+        const previewCanvas = document.getElementById('preview-canvas');
+        const closePreviewButton = document.getElementById('close-preview');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const prevPageButton = document.getElementById('prev-page');
+        const nextPageButton = document.getElementById('next-page');
+
+        let currentPreviewPage = 0;
+        let currentPreviewFile = null;
+
+        closePreviewButton.onclick = () => {
+            previewModal.style.display = "none";
+            currentPreviewPage = 0;
+            currentPreviewFile = null;
+        };
+        window.onclick = (event) => {
+            if (event.target == previewModal) {
+                previewModal.style.display = "none";
+                currentPreviewPage = 0;
+                currentPreviewFile = null;
+            }
+        };
+        
+        dropzone.onclick = () => fileInput.click();
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.backgroundColor = '#f0f0f0'; });
+        dropzone.addEventListener('dragleave', () => { dropzone.style.backgroundColor = 'transparent'; });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.backgroundColor = 'transparent';
+            carregarArquivos(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            carregarArquivos(e.target.files);
+            e.target.value = null;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (previewModal.style.display === "flex") {
+                if (e.key === 'ArrowLeft') {
+                    navegarPagina(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navegarPagina(1);
+                }
+            }
+        });
+
+        prevPageButton.addEventListener('click', () => navegarPagina(-1));
+        nextPageButton.addEventListener('click', () => navegarPagina(1));
+
+        function atualizarNumeracaoMiniaturas() {
+            const thumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+            for (let i = 0; i < thumbnails.length; i++) {
+                const span = thumbnails[i].querySelector('span');
+                if (span) {
+                    span.textContent = `Página ${i + 1}`;
+                }
+            }
+        }
+
+        async function carregarArquivos(files) {
+            loadingOverlay.style.display = 'flex';
+            if (thumbnailsContainer.children.length === 1 && thumbnailsContainer.children[0].id === 'placeholder') {
+                document.getElementById('placeholder').style.display = 'none';
+            }
+
+            try {
+                // Iterar sobre cada arquivo individualmente e processar em sequência
+                for (const file of files) {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        for (let i = 1; i <= pdfDocument.numPages; i++) {
+                            const page = await pdfDocument.getPage(i);
+                            const viewport = page.getViewport({ scale: 0.5 });
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            await page.render({ canvasContext: context, viewport: viewport }).promise;
+                            
+                            const thumbnailDiv = document.createElement('div');
+                            thumbnailDiv.className = 'page-thumbnail';
+                            thumbnailDiv.appendChild(canvas);
+                            
+                            const pageNumberSpan = document.createElement('span');
+                            pageNumberSpan.textContent = `Página ${thumbnailsContainer.children.length + 1}`;
+                            thumbnailDiv.appendChild(pageNumberSpan);
+                            
+                            const deleteButton = document.createElement('button');
+                            deleteButton.className = 'delete-button';
+                            deleteButton.textContent = 'x';
+                            deleteButton.onclick = (e) => {
+                                e.stopPropagation();
+                                thumbnailDiv.remove();
+                                atualizarNumeracaoMiniaturas();
+                            };
+                            thumbnailDiv.appendChild(deleteButton);
+                            
+                            const previewIcon = document.createElement('button');
+                            previewIcon.className = 'preview-icon';
+                            previewIcon.innerHTML = '&#128065;';
+                            previewIcon.onclick = async (e) => {
+                                e.stopPropagation();
+                                await mostrarVisualizacao(file, i);
+                            };
+                            thumbnailDiv.appendChild(previewIcon);
+                            
+                            thumbnailDiv.pdfData = {
+                                file: file,
+                                pageIndex: i - 1,
+                                originalPageNumber: i
+                            };
+                            
+                            thumbnailsContainer.appendChild(thumbnailDiv);
+                        }
+                    } catch (e) {
+                        console.error(`Erro ao carregar o arquivo ${file.name}:`, e);
+                        alert(`Ocorreu um erro ao carregar o arquivo ${file.name}. Ele foi ignorado.`);
+                    }
+                }
+            } catch (e) {
+                console.error(`Erro geral ao processar os arquivos:`, e);
+                alert("Ocorreu um erro geral ao carregar os arquivos. Verifique o console para mais detalhes.");
+            } finally {
+                loadingOverlay.style.display = 'none';
+                atualizarNumeracaoMiniaturas();
+                new Sortable(thumbnailsContainer, {
+                    animation: 150,
+                    ghostClass: 'blue-background-class',
+                    onUpdate: () => atualizarNumeracaoMiniaturas()
+                });
+            }
+        }
+
+        async function mostrarVisualizacao(file, pageNumber) {
+            currentPreviewFile = file;
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            currentPreviewPage = pageNumber;
+            const page = await pdfDocument.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 1.3 });
+            const context = previewCanvas.getContext('2d');
+            previewCanvas.height = viewport.height;
+            previewCanvas.width = viewport.width;
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            previewModal.style.display = "flex";
+            verificarBotoesNavegacao();
+        }
+
+        async function navegarPagina(direcao) {
+            if (!currentPreviewFile) return;
+
+            const arrayBuffer = await currentPreviewFile.arrayBuffer();
+            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const numPages = pdfDocument.numPages;
+
+            let newPageNumber = currentPreviewPage + direcao;
+
+            if (newPageNumber >= 1 && newPageNumber <= numPages) {
+                currentPreviewPage = newPageNumber;
+                const page = await pdfDocument.getPage(currentPreviewPage);
+                const viewport = page.getViewport({ scale: 1.3 });
+                const context = previewCanvas.getContext('2d');
+                previewCanvas.height = viewport.height;
+                previewCanvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                verificarBotoesNavegacao();
+            }
+        }
+        
+        async function verificarBotoesNavegacao() {
+            if (!currentPreviewFile) return;
+            const arrayBuffer = await currentPreviewFile.arrayBuffer();
+            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const numPages = pdfDocument.numPages;
+
+            prevPageButton.style.display = currentPreviewPage > 1 ? 'block' : 'none';
+            nextPageButton.style.display = currentPreviewPage < numPages ? 'block' : 'none';
+        }
+
+        function parsePageRange(rangeString) {
+            const selectedPages = new Set();
+            const parts = rangeString.split(',').map(s => s.trim());
+            for (const part of parts) {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    if (start > 0 && end >= start) {
+                        for (let i = start; i <= end; i++) {
+                            selectedPages.add(i);
+                        }
+                    }
+                } else {
+                    const page = Number(part);
+                    if (page > 0) {
+                        selectedPages.add(page);
+                    }
+                }
+            }
+            return Array.from(selectedPages).sort((a, b) => a - b);
+        }
+
+        async function baixarIntervaloDePaginas() {
+            try {
+                const rangeString = pageRangeInput.value;
+                if (!rangeString) {
+                    alert("Por favor, insira o intervalo de páginas que deseja baixar.");
+                    return;
+                }
+                const pagesToDownload = parsePageRange(rangeString);
+                if (pagesToDownload.length === 0) {
+                    alert("Formato de intervalo de páginas inválido. Exemplo: '1-3, 5, 8'.");
+                    return;
+                }
+                const reorderedThumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+                const pdfDestino = await PDFDocument.create();
+                const sourcePdfs = new Map();
+                for (const thumbnail of reorderedThumbnails) {
+                    const { file, pageIndex } = thumbnail.pdfData;
+                    const currentPageNumber = parseInt(thumbnail.querySelector('span').textContent.match(/\d+/)[0]);
+                    if (pagesToDownload.includes(currentPageNumber)) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        let pdfOrigem;
+                        if (!sourcePdfs.has(file)) {
+                            pdfOrigem = await PDFDocument.load(arrayBuffer);
+                            sourcePdfs.set(file, pdfOrigem);
+                        } else {
+                            pdfOrigem = sourcePdfs.get(file);
+                        }
+                        const [paginaCopiada] = await pdfDestino.copyPages(pdfOrigem, [pageIndex]);
+                        pdfDestino.addPage(paginaCopiada);
+                    }
+                }
+                if (pdfDestino.getPages().length === 0) {
+                    alert("Nenhuma página encontrada para o intervalo selecionado.");
+                    return;
+                }
+                const bytesDoPdf = await pdfDestino.save();
+                triggerDownload(bytesDoPdf, outputFilenameInput.value);
+            } catch (e) {
+                console.error("Erro na função baixarIntervaloDePaginas():", e);
+                alert("Ocorreu um erro ao baixar as páginas. Verifique o console para mais detalhes.");
+            }
+        }
+
+        async function juntarPdfs() {
+            try {
+                const reorderedThumbnails = thumbnailsContainer.getElementsByClassName('page-thumbnail');
+                if (reorderedThumbnails.length < 1) {
+                    alert("Nenhum PDF para juntar. Por favor, arraste e solte ou selecione arquivos.");
+                    return;
+                }
+                const pdfDestino = await PDFDocument.create();
+                const sourcePdfs = new Map();
+                for (const thumbnail of reorderedThumbnails) {
+                    const { file, pageIndex } = thumbnail.pdfData;
+                    const arrayBuffer = await file.arrayBuffer();
+                    let pdfOrigem;
+                    if (!sourcePdfs.has(file)) {
+                        pdfOrigem = await PDFDocument.load(arrayBuffer);
+                        sourcePdfs.set(file, pdfOrigem);
+                    } else {
+                        pdfOrigem = sourcePdfs.get(file);
+                    }
+                    const [paginaCopiada] = await pdfDestino.copyPages(pdfOrigem, [pageIndex]);
+                        pdfDestino.addPage(paginaCopiada);
+                }
+                const bytesDoPdf = await pdfDestino.save();
+                triggerDownload(bytesDoPdf, outputFilenameInput.value);
+            } catch (e) {
+                console.error("Erro na função juntarPdfs():", e);
+                alert("Ocorreu um erro ao juntar os PDFs. Verifique o console para mais detalhes.");
+            }
+        }
+
+        function limparPdfs() {
+            thumbnailsContainer.innerHTML = '<p id="placeholder">As miniaturas das páginas aparecerão aqui.</p>';
+            fileInput.value = null;
+            outputFilenameInput.value = "pdfs_juntos_e_editados.pdf";
+            pageRangeInput.value = "";
+        }
+
+        function triggerDownload(bytes, filename) {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename || 'documento.pdf';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
