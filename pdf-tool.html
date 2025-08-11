@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramenta de PDF - Talentos Consultoria</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad',
+                        secondary: '#196dff',
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-background flex flex-col min-h-screen font-sans">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+            </a>
+            <nav class="relative">
+                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+                    <span>Ferramentas</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
+                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
+                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 lg:p-6 mb-48">
+        <div class="bg-card rounded-3xl shadow-xl p-6 md:p-8">
+            <h1 class="text-2xl font-bold text-gray-800 text-center mb-4">Juntar, Reorganizar e Editar Páginas de PDFs</h1>
+            
+            <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer mb-6 bg-slate-50 hover:bg-slate-100 hover:border-primary transition-colors">
+                <p class="text-gray-600">Arraste e solte seus arquivos PDF aqui, ou <span class="text-primary font-semibold">clique para selecioná-los</span>.</p>
+                <input type="file" id="pdfFiles" multiple accept=".pdf" class="hidden">
+            </div>
+
+            <div id="thumbnails-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 min-h-[200px] bg-slate-100 p-4 rounded-lg">
+                <p id="placeholder" class="text-gray-500 italic col-span-full text-center self-center">As miniaturas das páginas aparecerão aqui.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="fixed-download-bar" class="fixed bottom-0 left-0 w-full bg-slate-100 p-4 border-t border-gray-200 shadow-lg z-50">
+        <div class="container mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex-grow flex flex-wrap gap-4 items-end">
+                <div class="flex-grow min-w-[200px]">
+                    <label for="output-filename" class="text-sm font-semibold text-gray-700 block mb-1">Nome do arquivo:</label>
+                    <input type="text" id="output-filename" value="documento_editado.pdf" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+                </div>
+                <div class="flex-grow min-w-[200px]">
+                    <label for="page-range" class="text-sm font-semibold text-gray-700 block mb-1">Intervalo de páginas (ex: 1-3, 5):</label>
+                    <input type="text" id="page-range" placeholder="Todas as páginas" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3 items-center">
+                <button class="px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition" id="limpar-btn">Limpar Tudo</button>
+                <button class="px-4 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 transition" id="baixar-selecionados-btn">Baixar Intervalo</button>
+                <button class="px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 transition" id="baixar-todos-btn">Juntar e Baixar Tudo</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="preview-modal" class="hidden flex fixed inset-0 bg-black bg-opacity-80 z-[100] justify-center items-center p-4">
+        <button id="prev-page" class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl opacity-70 hover:opacity-100 z-10">❮</button>
+        <div id="preview-content" class="relative">
+            <button id="close-preview" class="absolute -top-8 right-0 text-white text-4xl font-bold opacity-70 hover:opacity-100">×</button>
+            <canvas id="preview-canvas" class="max-w-[90vw] max-h-[85vh] rounded shadow-lg"></canvas>
+        </div>
+        <button id="next-page" class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl opacity-70 hover:opacity-100 z-10">❯</button>
+    </div>
+    
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[101] justify-center items-center">
+        <div class="spinner"></div>
+    </div>
+
+    <footer class="bg-gray-800 text-white text-center p-4 mt-auto">
+        <p>&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Elementos do DOM e Estado
+        const { PDFDocument, degrees } = PDFLib;
+        const thumbnailsContainer = document.getElementById('thumbnails-container');
+        const fileInput = document.getElementById('pdfFiles');
+        const dropzone = document.getElementById('dropzone');
+        const outputFilenameInput = document.getElementById('output-filename');
+        const pageRangeInput = document.getElementById('page-range');
+        const previewModal = document.getElementById('preview-modal');
+        const previewCanvas = document.getElementById('preview-canvas');
+        const closePreviewButton = document.getElementById('close-preview');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const prevPageButton = document.getElementById('prev-page');
+        const nextPageButton = document.getElementById('next-page');
+
+        let sortableInstance = null;
+        let lastViewedGlobalIndex = -1;
+        let lastHighlightedThumbnail = null;
+        const highlightClasses = ['border-4', 'border-primary', 'ring-2', 'ring-primary'];
+
+        // Dropdown do Cabeçalho
+        const dropdownButton = document.getElementById('tools-dropdown-button');
+        const dropdownMenu = document.getElementById('tools-dropdown-menu');
+        dropdownButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+        window.addEventListener('click', () => {
+            if (!dropdownMenu.classList.contains('hidden')) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+
+        // --- Funções de Destaque ---
+        function highlightLastViewed() {
+            if (lastHighlightedThumbnail) {
+                lastHighlightedThumbnail.classList.remove(...highlightClasses);
+                lastHighlightedThumbnail = null;
+            }
+            if (lastViewedGlobalIndex !== -1) {
+                const allThumbnails = Array.from(thumbnailsContainer.querySelectorAll('.pdf-thumbnail'));
+                const thumbnailToHighlight = allThumbnails[lastViewedGlobalIndex];
+                if (thumbnailToHighlight) {
+                    thumbnailToHighlight.classList.add(...highlightClasses);
+                    lastHighlightedThumbnail = thumbnailToHighlight;
+                    thumbnailToHighlight.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        // --- Funções do Modal ---
+        function fecharModal() {
+            previewModal.classList.add('hidden');
+            highlightLastViewed();
+        }
+
+        closePreviewButton.addEventListener('click', fecharModal);
+        previewModal.addEventListener('click', (event) => { if (event.target === previewModal) fecharModal(); });
+        document.addEventListener('keydown', (e) => {
+            if (!previewModal.classList.contains('hidden')) {
+                if (e.key === 'ArrowLeft') navegarPagina(-1);
+                else if (e.key === 'ArrowRight') navegarPagina(1);
+                else if (e.key === 'Escape') fecharModal();
+            }
+        });
+        
+        // --- Lógica de Navegação e Visualização ---
+        prevPageButton.addEventListener('click', () => navegarPagina(-1));
+        nextPageButton.addEventListener('click', () => navegarPagina(1));
+
+        async function mostrarVisualizacao(globalIndex) {
+            const allThumbnails = Array.from(thumbnailsContainer.querySelectorAll('.pdf-thumbnail'));
+            if (globalIndex < 0 || globalIndex >= allThumbnails.length) return;
+
+            lastViewedGlobalIndex = globalIndex;
+            const thumbnailDiv = allThumbnails[globalIndex];
+            const { file, pageIndex } = thumbnailDiv.pdfData;
+            const rotation = parseInt(thumbnailDiv.dataset.rotation || '0');
+            
+            const arrayBuffer = await file.arrayBuffer();
+            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const page = await pdfDocument.getPage(pageIndex + 1);
+
+            const viewport = page.getViewport({ scale: 1.5, rotation });
+            previewCanvas.height = viewport.height;
+            previewCanvas.width = viewport.width;
+            await page.render({ canvasContext: previewCanvas.getContext('2d'), viewport }).promise;
+            
+            previewModal.classList.remove('hidden');
+            verificarBotoesNavegacao(globalIndex);
+        }
+
+        function navegarPagina(direcao) {
+            const newGlobalIndex = lastViewedGlobalIndex + direcao;
+            mostrarVisualizacao(newGlobalIndex);
+        }
+
+        function verificarBotoesNavegacao(globalIndex) {
+            const totalPages = thumbnailsContainer.querySelectorAll('.pdf-thumbnail').length;
+            prevPageButton.style.display = globalIndex > 0 ? 'block' : 'none';
+            nextPageButton.style.display = globalIndex < totalPages - 1 ? 'block' : 'none';
+        }
+
+        // --- Lógica Principal da Ferramenta ---
+        document.getElementById('limpar-btn').addEventListener('click', limparPdfs);
+        document.getElementById('baixar-selecionados-btn').addEventListener('click', baixarIntervaloDePaginas);
+        document.getElementById('baixar-todos-btn').addEventListener('click', juntarPdfs);
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            carregarArquivos(e.target.files);
+            e.target.value = null;
+        });
+
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary', 'bg-blue-50'); });
+        dropzone.addEventListener('dragleave', (e) => { e.currentTarget.classList.remove('border-primary', 'bg-blue-50'); });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('border-primary', 'bg-blue-50');
+            carregarArquivos(e.dataTransfer.files);
+        });
+
+        function atualizarNumeracaoMiniaturas() {
+            const thumbnails = thumbnailsContainer.querySelectorAll('.pdf-thumbnail');
+            thumbnails.forEach((thumbnail, index) => {
+                const span = thumbnail.querySelector('.pdf-thumbnail-overlay');
+                if (span) span.textContent = `Pág. ${index + 1}`;
+            });
+        }
+
+        function girarPagina(event, angulo) {
+            event.stopPropagation();
+            const thumbnailDiv = event.currentTarget.closest('.pdf-thumbnail');
+            if (!thumbnailDiv) return;
+            let currentRotation = parseInt(thumbnailDiv.dataset.rotation || '0', 10);
+            let newRotation = (currentRotation + angulo + 360) % 360;
+            thumbnailDiv.dataset.rotation = newRotation;
+            const canvas = thumbnailDiv.querySelector('canvas');
+            if (canvas) canvas.style.transform = `rotate(${newRotation}deg)`;
+        }
+
+        async function carregarArquivos(files) {
+            loadingOverlay.style.display = 'flex';
+            document.getElementById('placeholder')?.remove();
+
+            for (const file of files) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    for (let i = 1; i <= pdfDocument.numPages; i++) {
+                        const page = await pdfDocument.getPage(i);
+                        const viewport = page.getViewport({ scale: 0.3 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        
+                        const thumbnailDiv = document.createElement('div');
+                        thumbnailDiv.className = 'pdf-thumbnail';
+                        thumbnailDiv.dataset.rotation = 0;
+                        thumbnailDiv.pdfData = { file, pageIndex: i - 1 };
+                        
+                        thumbnailDiv.appendChild(canvas);
+                        
+                        const overlayHTML = `
+                            <span class="pdf-thumbnail-overlay"></span>
+                            <button class="pdf-thumbnail-btn delete" title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                            </button>
+                            <button class="pdf-thumbnail-btn rotate-left" title="Girar Esquerda">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"></path></svg>
+                            </button>
+                            <button class="pdf-thumbnail-btn rotate-right" title="Girar Direita">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"></path></svg>
+                            </button>
+                            <button class="pdf-thumbnail-btn preview" title="Visualizar">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C3.732 4.943 9.522 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-9.064 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        `;
+
+                        thumbnailDiv.insertAdjacentHTML('beforeend', overlayHTML);
+                        thumbnailsContainer.appendChild(thumbnailDiv);
+
+                        thumbnailDiv.querySelector('.delete').onclick = (e) => {
+                            e.stopPropagation();
+                            thumbnailDiv.remove();
+                            atualizarNumeracaoMiniaturas();
+                        };
+                        thumbnailDiv.querySelector('.rotate-left').onclick = (e) => girarPagina(e, -90);
+                        thumbnailDiv.querySelector('.rotate-right').onclick = (e) => girarPagina(e, 90);
+                        thumbnailDiv.querySelector('.preview').onclick = async (e) => {
+                            e.stopPropagation();
+                            const allThumbnails = Array.from(thumbnailsContainer.querySelectorAll('.pdf-thumbnail'));
+                            const globalIndex = allThumbnails.indexOf(thumbnailDiv);
+                            await mostrarVisualizacao(globalIndex);
+                        };
+                    }
+                } catch (e) {
+                    console.error(`Erro ao carregar ${file.name}:`, e);
+                    alert(`Ocorreu um erro ao carregar o arquivo ${file.name}.`);
+                }
+            }
+            
+            loadingOverlay.style.display = 'none';
+            atualizarNumeracaoMiniaturas();
+
+            if (!sortableInstance) {
+                sortableInstance = new Sortable(thumbnailsContainer, {
+                    animation: 150,
+                    onUpdate: () => atualizarNumeracaoMiniaturas()
+                });
+            }
+        }
+
+        function parsePageRange(rangeString) {
+            if (!rangeString.trim()) return null;
+            const selectedPages = new Set();
+            const parts = rangeString.split(',').map(s => s.trim()).filter(Boolean);
+            for (const part of parts) {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
+                        for (let i = start; i <= end; i++) selectedPages.add(i);
+                    }
+                } else {
+                    const page = Number(part);
+                    if (!isNaN(page) && page > 0) selectedPages.add(page);
+                }
+            }
+            return Array.from(selectedPages).sort((a, b) => a - b);
+        }
+
+        async function baixarIntervaloDePaginas() {
+            const rangeString = pageRangeInput.value;
+            const pagesToDownload = parsePageRange(rangeString);
+            if (!pagesToDownload || pagesToDownload.length === 0) {
+                alert("Formato de intervalo de páginas inválido ou campo vazio. Exemplo: '1-3, 5, 8'.");
+                return;
+            }
+            await gerarPdf(pagesToDownload);
+        }
+        
+        async function juntarPdfs() {
+             await gerarPdf(null);
+        }
+
+        async function gerarPdf(pagesToKeep) {
+            loadingOverlay.style.display = 'flex';
+            try {
+                const reorderedThumbnails = Array.from(thumbnailsContainer.querySelectorAll('.pdf-thumbnail'));
+                if (reorderedThumbnails.length === 0) {
+                    alert("Nenhuma página para processar.");
+                    return;
+                }
+                const pdfDestino = await PDFDocument.create();
+                const sourcePdfs = new Map();
+                for (let i = 0; i < reorderedThumbnails.length; i++) {
+                    const thumbnail = reorderedThumbnails[i];
+                    const currentPageNumber = i + 1;
+                    if (pagesToKeep && !pagesToKeep.includes(currentPageNumber)) {
+                        continue;
+                    }
+                    const { file, pageIndex } = thumbnail.pdfData;
+                    const rotationDegrees = parseInt(thumbnail.dataset.rotation || '0', 10);
+                    let pdfOrigem = sourcePdfs.get(file);
+                    if (!pdfOrigem) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        pdfOrigem = await PDFDocument.load(arrayBuffer);
+                        sourcePdfs.set(file, pdfOrigem);
+                    }
+                    const [paginaCopiada] = await pdfDestino.copyPages(pdfOrigem, [pageIndex]);
+                    paginaCopiada.setRotation(degrees(rotationDegrees));
+                    pdfDestino.addPage(paginaCopiada);
+                }
+                if (pdfDestino.getPageCount() === 0) {
+                    alert("Nenhuma página corresponde ao intervalo selecionado.");
+                    return;
+                }
+                const bytesDoPdf = await pdfDestino.save();
+                triggerDownload(bytesDoPdf, outputFilenameInput.value);
+            } catch (e) {
+                console.error("Erro ao gerar PDF:", e);
+                alert("Ocorreu um erro ao gerar o PDF. Verifique o console para mais detalhes.");
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        function limparPdfs() {
+            thumbnailsContainer.innerHTML = '<p id="placeholder" class="text-gray-500 italic col-span-full text-center self-center">As miniaturas das páginas aparecerão aqui.</p>';
+            fileInput.value = null;
+            outputFilenameInput.value = "documento_editado.pdf";
+            pageRangeInput.value = "";
+            if (sortableInstance) {
+                sortableInstance.destroy();
+                sortableInstance = null;
+            }
+            lastViewedGlobalIndex = -1;
+            lastHighlightedThumbnail = null;
+        }
+
+        function triggerDownload(bytes, filename) {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename || 'documento.pdf';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
