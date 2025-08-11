@@ -1,56 +1,183 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Menu Principal - Talentos Consultoria</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
-  <!-- MSAL -->
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/auth.js"></script>
-  <script src="assets/js/firebase-init.js" type="module"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPDoc • Talentos Consultoria</title>
+
+  <!-- Tailwind só para layout rápido (CDN ok para páginas estáticas) -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+
+  <!-- Firebase compat 10.12.4 (app, auth e firestore) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js" defer></script>
+
+  <style>
+    body{ background:#f7f7f9 }
+    .card{ max-width: 880px }
+    code,kbd{ background:#f3f4f6; padding:2px 6px; border-radius:6px }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    if (!window.firebase?.apps?.length) { firebase.initializeApp(TalentosConfig.firebaseConfig); }
+  </script>
 </head>
-<body>
-  <div class="container">
-    <div class="card">
-      <h1>Bem-vindo</h1>
-      <p id="user-info" class="muted">Carregando sessão…</p>
-      <div style="margin:12px 0;">
-        <button id="btn-logout" class="btn">Sair</button>
-        <button id="btn-firestore" class="btn">Teste Firestore</button>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div class="card w-full bg-white rounded-2xl shadow p-6">
+    <div class="flex items-center justify-between gap-4 mb-4">
+      <h1 class="text-2xl font-semibold">DPDoc — Talentos Consultoria</h1>
+      <div id="userBox" class="hidden text-right">
+        <div class="text-sm text-gray-600">Autenticado como</div>
+        <div id="userEmail" class="font-medium"></div>
       </div>
-      <div id="firestore-status" class="muted"></div>
-      <hr style="margin: 20px 0; border-color: rgba(255,255,255,.1)">
-      <p class="muted">Esta página está protegida por autenticação Microsoft (MSAL). Mantenha suas credenciais seguras.</p>
+    </div>
+
+    <!-- Status / mensagens -->
+    <div id="status" class="text-sm text-gray-700 mb-4">Carregando…</div>
+
+    <!-- Botão de login -->
+    <div id="loginBox" class="mb-6 hidden">
+      <button id="btnLogin" class="px-4 py-2 rounded-xl border hover:shadow">
+        Entrar com Microsoft
+      </button>
+      <p class="text-xs text-gray-500 mt-2">
+        Use sua conta corporativa <b>@talentosconsultoria.com.br</b>.
+      </p>
+    </div>
+
+    <!-- Conteúdo protegido -->
+    <div id="app" class="hidden space-y-4">
+      <div class="p-4 rounded-xl bg-gray-50">
+        <div class="font-medium mb-1">Exemplo de acesso ao Firestore</div>
+        <p class="text-sm text-gray-600 mb-3">Clique para gravar e ler um doc de teste.</p>
+        <div class="flex gap-2">
+          <button id="btnWrite" class="px-3 py-2 rounded-lg border">Gravar doc</button>
+          <button id="btnRead"  class="px-3 py-2 rounded-lg border">Ler doc</button>
+        </div>
+        <pre id="out" class="mt-3 text-xs whitespace-pre-wrap"></pre>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600">
+          Dica: este projeto usa <code>signInWithPopup</code> (sem <kbd>/__/auth/handler</kbd>), então funciona bem no GitHub Pages + Cloudflare.
+        </div>
+        <button id="btnLogout" class="px-3 py-2 rounded-lg border">Sair</button>
+      </div>
     </div>
   </div>
 
-  <script>
-    (async function(){
-      // Garante conta ativa ou redireciona ao login
-      const acc = TalentosAuthGuard.activeAccountOrRedirect();
-      if (!acc) return;
+<script>
+// ========= CONFIG BÁSICA =========
+const APP = {
+  allowedDomain: "talentosconsultoria.com.br",
+};
 
-      // Exibe informações básicas
-      const claims = acc.idTokenClaims || {};
-      const upn = claims.preferred_username || acc.username || "(sem e-mail)";
-      const name = acc.name || "(sem nome)";
-      document.getElementById("user-info").textContent = `${name} · ${upn}`;
+// Firebase config do seu projeto (público; ok ficar no front)
+const firebaseConfig = {
+  apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
+  authDomain: "talentosbd-e4206.firebaseapp.com",
+  projectId: "talentosbd-e4206",
+  storageBucket: "talentosbd-e4206.firebasestorage.app",
+  messagingSenderId: "580727253031",
+  appId: "1:580727253031:web:5368302ef0da6277788602",
+  measurementId: "G-S464LNX2J9"
+};
 
-      // Botões
-      document.getElementById("btn-logout").addEventListener("click", async () => {
-        await TalentosAuth.forceLogout();
-      });
+// ========= BOOT =========
+window.addEventListener("DOMContentLoaded", () => {
+  const status = (msg) => (document.getElementById("status").textContent = msg ?? "");
+  const show = (id, on) => document.getElementById(id).classList.toggle("hidden", !on);
 
-      document.getElementById("btn-firestore").addEventListener("click", async () => {
-        if (window.TalentosDB?.readSample) {
-          await window.TalentosDB.readSample();
-        } else {
-          document.getElementById("firestore-status").textContent = "Firebase não inicializado.";
+  try {
+    if (!firebase.apps?.length) firebase.initializeApp(firebaseConfig);
+  } catch(e) {
+    console.error("[config] Erro ao iniciar Firebase", e);
+  }
+
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  // Persistência local da sessão
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+
+  // Provider Microsoft
+  const provider = new firebase.auth.OAuthProvider("microsoft.com");
+  provider.setCustomParameters({ prompt: "select_account", domain_hint: APP.allowedDomain, tenant: "cba0be9f-94ad-4a26-b291-fa90af7491ee" });
+
+  // Guardião simples: deixa entrar só e-mails do domínio
+  const domainOk = (email) => typeof email === "string" && email.toLowerCase().endsWith("@" + APP.allowedDomain);
+
+  // UI: ações
+  document.getElementById("btnLogin").addEventListener("click", async () => {
+    status("Abrindo popup de login…");
+    try {
+      await auth.signInWithPopup(provider);
+      // se popup bloqueado, faz fallback para redirect
+    } catch (e) {
+      if (e && (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user")) {
+        status("Popup bloqueado. Tentando redirecionamento…");
+        try { await auth.signInWithRedirect(provider); } catch (err) {
+          console.error("[login redirect] erro:", err);
+          status("Não foi possível iniciar o login. Verifique bloqueio de popups e tente novamente.");
         }
-      });
-    })();
-  </script>
+      } else {
+        console.error("[login popup] erro:", e);
+        status((e?.message) || "Falha no login.");
+      }
+    }
+  });
+
+  document.getElementById("btnLogout").addEventListener("click", async () => {
+    await auth.signOut();
+    location.reload();
+  });
+
+  // Ações Firestore (exemplo)
+  document.getElementById("btnWrite").addEventListener("click", async () => {
+    const u = auth.currentUser;
+    if (!u) return;
+    await db.collection("demo").doc(u.uid).set({
+      who: u.email,
+      when: firebase.firestore.FieldValue.serverTimestamp(),
+      hello: "world"
+    }, { merge:true });
+    document.getElementById("out").textContent = "Gravou com sucesso em demo/" + u.uid;
+  });
+
+  document.getElementById("btnRead").addEventListener("click", async () => {
+    const u = auth.currentUser;
+    if (!u) return;
+    const snap = await db.collection("demo").doc(u.uid).get();
+    document.getElementById("out").textContent = snap.exists ? JSON.stringify(snap.data(), null, 2) : "Nada lido.";
+  });
+
+  // Estado de autenticação
+  status("Carregando sessão…");
+  auth.onAuthStateChanged(async (user) => {
+    if (user && domainOk(user.email)) {
+      document.getElementById("userEmail").textContent = user.email;
+      show("userBox", true);
+      show("loginBox", false);
+      show("app", true);
+      status("");
+    } else if (user && !domainOk(user.email)) {
+      status("Conta fora do domínio permitido. Saindo…");
+      await auth.signOut();
+      show("app", false);
+      show("userBox", false);
+      show("loginBox", true);
+    } else {
+      // sem sessão
+      show("app", false);
+      show("userBox", false);
+      show("loginBox", true);
+      status("Faça login para continuar.");
+    }
+  });
+});
+</script>
 </body>
 </html>
