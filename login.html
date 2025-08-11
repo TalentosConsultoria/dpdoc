@@ -7,106 +7,75 @@
   <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
   <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script data-cfasync="false" src="./config.js?v=3.6"></script>
-  <script data-cfasync="false" src="./auth-guard.js?v=3.6"></script>
-  <style>body { background: #f7f7f7; }</style>
+  <script data-cfasync="false" src="./config.js?v=3.8"></script>
+  <script data-cfasync="false" src="./auth-guard.js?v=3.8"></script>
+  <style>body { background: #0b1020; color: #e5e7eb; } .card{background:#101932;border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);}</style>
 </head>
 <body class="min-h-screen flex items-center justify-center">
-  <div class="bg-white rounded-2xl shadow p-6 w-full max-w-md">
+  <div class="card p-6 w-full max-w-xl">
     <h1 class="text-2xl font-semibold mb-4">Acesso Talentos Consultoria</h1>
-    <p class="text-sm text-gray-600 mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
-    <div id="status" class="text-sm text-gray-700 mb-4"></div>
+    <p class="text-sm text-gray-300 mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+    <div id="status" class="text-sm text-gray-300 mb-4"></div>
     <button id="btnLogin" class="w-full py-2 rounded-xl border hover:shadow">Entrar com Microsoft</button>
   </div>
 
   <script>
   (function() {
-    // ===== Parâmetros de retorno =====
     const params = new URLSearchParams(location.search);
-    const error = params.get("error");
     const rawReturn = params.get("return");
-    let returnUrl = (window.TalentosAuthGuard ? TalentosAuthGuard.safeReturnUrl(rawReturn || TalentosConfig.DEFAULT_RETURN) : (rawReturn || "index.html"));
-    if (!returnUrl || returnUrl === "/") returnUrl = "index.html";
+    const returnUrl = (window.TalentosAuthGuard ? TalentosAuthGuard.safeReturnUrl(rawReturn || (window.TalentosConfig?.DEFAULT_RETURN||"index.html")) : (rawReturn || "index.html")) || "index.html";
 
-    const statusEl = document.getElementById("status") || { textContent: "" };
-    const setStatus = (t) => { statusEl.textContent = t || ""; };
+    const statusEl = document.getElementById("status");
+    const setStatus = (t)=>{ if(statusEl) statusEl.textContent = t||""; };
 
-    if (error === "forbidden") {
-      setStatus("Conta fora do domínio permitido. Use seu e-mail corporativo.");
-    }
-
-    // ===== Firebase Auth (compat) =====
     const auth = firebase.auth();
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
-    // Provider Microsoft com TENANT específico (evita /common e AADSTS50194)
+    // ---- Provider Microsoft com TENANT fixo (evita /common) ----
     const TENANT = (window.TalentosConfig && (TalentosConfig.AAD_TENANT_ID || TalentosConfig.AAD_TENANT)) || "cba0be9f-94ad-4a26-b291-fa90af7491ee";
     const provider = new firebase.auth.OAuthProvider("microsoft.com");
-    try {
-      provider.setCustomParameters({ tenant: TENANT, prompt: "select_account" });
-    } catch(_) {}
+    provider.setCustomParameters({ tenant: TENANT, prompt: "select_account" });
 
     function domainOk(email){
       try { return window.TalentosAuthGuard ? TalentosAuthGuard.emailDomainAllowed(email) : true; }
       catch { return true; }
     }
 
-    function shouldRedirect(user) {
+    async function finishIfLogged(user){
       if (!user) return false;
-      if (!user.email) return true;
-      return domainOk(user.email);
+      if (domainOk(user.email)) {
+        location.replace(returnUrl);
+      } else {
+        await auth.signOut();
+        setStatus("Conta fora do domínio permitido. Use seu e-mail corporativo.");
+      }
+      return true;
     }
 
-    let navigating = false;
+    // 1) Se já tem sessão, sai direto
+    auth.onAuthStateChanged((u)=>{ finishIfLogged(u); });
 
-    // Conclusão de retorno por redirect (se houve)
-    (async function handleRedirectResult() {
-      try {
+    // 2) Trata retorno do redirect
+    (async function handleRedirect(){
+      try{
         const res = await auth.getRedirectResult();
-        if (res && res.user && !navigating) {
-          if (shouldRedirect(res.user)) {
-            navigating = true;
-            location.replace(returnUrl);
-            return;
-          } else {
-            await auth.signOut();
-            setStatus("Conta fora do domínio permitido. Use seu e-mail corporativo.");
-          }
-        }
-      } catch (e) {
-        console.error("[login] getRedirectResult:", e);
-        // mostra mensagem curta, mas não trava o fluxo
-        setStatus("Falha ao recuperar sessão. Tente entrar novamente.");
+        if (res && res.user) { await finishIfLogged(res.user); }
+      }catch(e){
+        console.error("[auth] getRedirectResult", e);
+        setStatus((e && (e.message||e.code)) ? String(e.message||e.code) : "Falha ao processar retorno de login.");
       }
     })();
 
-    // Se já estiver logado, segue para o índice
-    auth.onAuthStateChanged(function(u) {
-      if (navigating) return;
-      if (u && shouldRedirect(u)) {
-        navigating = true;
-        location.replace(returnUrl);
-      } else if (u && !shouldRedirect(u)) {
-        auth.signOut().finally(()=> setStatus("Conta fora do domínio permitido. Use seu e-mail corporativo."));
-      }
-    });
-
-    async function doLogin() {
-      setStatus("Abrindo autenticação da Microsoft…");
-      try {
-        await auth.signInWithPopup(provider);
-        // onAuthStateChanged/redirect result cuidam do redirecionamento
-      } catch (e) {
-        console.warn("[login] popup falhou, tentando redirect:", e && (e.code || e.message));
-        try {
-          await auth.signInWithRedirect(provider);
-        } catch (e2) {
-          console.error("[login] redirect falhou:", e2);
-          setStatus((e2 && (e2.code + " – " + e2.message)) || "Falha ao iniciar login.");
-        }
+    // 3) Botão login (redirect)
+    async function doLogin(){
+      setStatus("Redirecionando para Microsoft…");
+      try{
+        await auth.signInWithRedirect(provider);
+      }catch(e){
+        console.error("[auth] signInWithRedirect", e);
+        setStatus((e && (e.message||e.code)) ? String(e.message||e.code) : "Falha ao iniciar login.");
       }
     }
-
     document.getElementById("btnLogin")?.addEventListener("click", doLogin);
   })();
   </script>
