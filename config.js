@@ -25,7 +25,8 @@
     LOGIN_PAGE: "login.html",
     DEFAULT_RETURN: "index.html",
     ALLOWED_ORIGINS_DEBUG: [],
-    AAD_TENANT: 'talentosconsultoria.com.br'
+    AAD_TENANT: 'talentosconsultoria.com.br',
+    AAD_TENANT_ID: 'cba0be9f-94ad-4a26-b291-fa90af7491ee'
   };
   TalentosConfig.allowedDomains = TalentosConfig.ALLOWED_DOMAINS;
   TalentosConfig.redirectAfterLogin = TalentosConfig.DEFAULT_RETURN;

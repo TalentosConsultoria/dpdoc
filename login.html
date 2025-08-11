@@ -90,7 +90,11 @@
 
     // Botão: tenta POPUP primeiro; se falhar, usa REDIRECT
     const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({ prompt: 'select_account', domain_hint: 'talentosconsultoria.com.br', tenant: (window.TalentosConfig && (TalentosConfig.AAD_TENANT || TalentosConfig.AZURE_TENANT || 'talentosconsultoria.com.br')) || 'talentosconsultoria.com.br' });
+    provider.setCustomParameters({
+  prompt: 'select_account',
+  domain_hint: 'talentosconsultoria.com.br',
+  tenant: (window.TalentosConfig && (TalentosConfig.AAD_TENANT_ID || TalentosConfig.AAD_TENANT)) || 'organizations'
+});
     const FLAG = 'talentos_login_inflight';
 
     async function doLogin() {
