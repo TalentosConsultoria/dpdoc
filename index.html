@@ -1,140 +1,70 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
-  <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase compat (mantido) -->
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <!-- Seus arquivos já existentes -->
-  <script data-cfasync="false" src="./config.js"></script>
-  <script data-cfasync="false" src="./auth-guard.js"></script>
-  <style>
-    body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:24px; }
-    .btn{ display:inline-block; padding:10px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:inherit; cursor:pointer; }
-    .btn:hover{ border-color:#3b82f6; }
-    .muted{ color:#9aa0aa; }
-  </style>
-</head>
-<body class="min-h-screen flex items-center justify-center p-4">
-  <div class="card w-full max-w-xl">
-    <h1 class="text-3xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
-    <p class="muted mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
-    <button id="btnLogin" class="btn">Entrar com Microsoft</button>
-    <p id="status" class="muted mt-3"></p>
-  </div>
+<script data-cfasync="false">
+(function(){
+  const cfg = window.TalentosConfig || {};
+  const statusEl = document.getElementById("status");
+  const setStatus = (t)=>{ if(statusEl) statusEl.textContent = t || ""; };
 
-  <script data-cfasync="false">
-  (function(){
-    const cfg = window.TalentosConfig || {};
-    const statusEl = document.getElementById("status");
-    const setStatus = (t)=>{ if(statusEl) statusEl.textContent = t || ""; };
+  // URL de retorno segura
+  const rawReturn = new URLSearchParams(location.search).get("return");
+  const defaultReturn = cfg.DEFAULT_RETURN || "index.html";
+  const safeReturn = (window.TalentosAuthGuard && TalentosAuthGuard.safeReturnUrl)
+    ? TalentosAuthGuard.safeReturnUrl(rawReturn || defaultReturn)
+    : (rawReturn || defaultReturn);
 
-    // URL de retorno
-    const rawReturn = new URLSearchParams(location.search).get("return");
-    const safeReturn = (window.TalentosAuthGuard && TalentosAuthGuard.safeReturnUrl)
-      ? TalentosAuthGuard.safeReturnUrl(rawReturn || cfg.DEFAULT_RETURN || "index.html")
-      : (rawReturn || "index.html");
+  // Firebase Auth (compat)
+  if (!firebase?.auth) { setStatus("Firebase Auth não carregou."); return; }
+  const auth = firebase.auth();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
-    // Firebase
-    if (!firebase?.auth) { setStatus("Firebase Auth não carregou."); return; }
-    const auth = firebase.auth();
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+  // Microsoft provider com TENANT fixo (evita /common)
+  const tenant = cfg.AAD_TENANT_ID || "cba0be9f-94ad-4a26-b291-fa90af7491ee";
+  const provider = new firebase.auth.OAuthProvider("microsoft.com");
+  try {
+    provider.setCustomParameters({ tenant, prompt: "select_account" });
+  } catch(_) {}
 
-    // Provider Microsoft
-    const provider = new firebase.auth.OAuthProvider("microsoft.com");
-    try {
-      if (cfg.AAD_TENANT_ID) provider.setCustomParameters({ tenant: cfg.AAD_TENANT_ID });
-      provider.setCustomParameters({ prompt: "select_account" });
-    } catch(_) {}
+  function emailDomainAllowed(email){
+    if (window.TalentosAuthGuard?.emailDomainAllowed) return TalentosAuthGuard.emailDomainAllowed(email);
+    const dom = (cfg.ALLOWED_EMAIL_DOMAIN || "talentosconsultoria.com.br").toLowerCase();
+    return typeof email === "string" && email.toLowerCase().endsWith("@"+dom);
+  }
 
-    function emailDomainAllowed(email){
-      if (window.TalentosAuthGuard?.emailDomainAllowed) return TalentosAuthGuard.emailDomainAllowed(email);
-      const dom = (cfg.ALLOWED_EMAIL_DOMAIN || "talentosconsultoria.com.br").toLowerCase();
-      return typeof email === "string" && email.toLowerCase().endsWith("@"+dom);
+  function handleUser(user){
+    const em = user?.email || "";
+    if (!emailDomainAllowed(em)) {
+      setStatus("Domínio não autorizado: " + em);
+      return auth.signOut();
     }
+    location.replace(safeReturn);
+  }
 
-    // Pós-redirect: processa se houver resultado pendente
-    auth.getRedirectResult().then(res => {
-      if (res && res.user) {
-        const em = res.user.email || "";
-        if (!emailDomainAllowed(em)) {
-          setStatus("Domínio não autorizado: " + em);
-          return auth.signOut();
-        }
-        return location.replace(safeReturn);
-      }
-    }).catch(err => {
+  // 1) Processa retorno do redirect (se houver)
+  auth.getRedirectResult()
+    .then(res => { if (res && res.user) handleUser(res.user); })
+    .catch(err => {
       console.error("getRedirectResult:", err);
-      // Não bloqueia a página; usuário pode tentar de novo no botão
-    });
-    <script>
-// ... seu código de init Firebase ...
-
-const auth = firebase.auth();
-const db   = firebase.firestore();
-
-// Persistência local
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-
-// 👇 ADICIONE ESTE BLOCO AQUI — processa o retorno do redirect
-auth.getRedirectResult()
-  .then((res) => {
-    if (res && res.user) {
-      // já logou via redirect; o onAuthStateChanged também vai disparar,
-      // mas se quiser pode atualizar UI aqui:
-      // document.getElementById("userEmail").textContent = res.user.email || "";
-      // mostrar app, esconder login, etc.
-    }
-  })
-  .catch((e) => {
-    console.error("[index] getRedirectResult:", e);
-  });
-
-// ... depois mantenha o seu onAuthStateChanged como já está ...
-auth.onAuthStateChanged((user) => {
-  // seu código existente de mostrar app/esconder login
-});
-</script>
-
-    // Sessão ativa -> vai para o index
-    auth.onAuthStateChanged(user => {
-      if (user && emailDomainAllowed(user.email || "")) {
-        location.replace(safeReturn);
-      }
+      const msg = (err && err.message) || "";
+      if (msg.includes("AADSTS50194")) setStatus("Falha de tenant (/common). Tente novamente.");
     });
 
-    // Clique do botão: tenta popup, cai para redirect se necessário
-    document.getElementById("btnLogin")?.addEventListener("click", async ()=>{
-      setStatus("Abrindo autenticador...");
+  // 2) Se já logado, segue
+  auth.onAuthStateChanged(u => { if (u) handleUser(u); });
+
+  // 3) Clique → popup; se bloquear, fallback para redirect
+  document.getElementById("btnLogin")?.addEventListener("click", async ()=>{
+    setStatus("Abrindo autenticador…");
+    try {
+      const res = await auth.signInWithPopup(provider);
+      if (res?.user) handleUser(res.user);
+    } catch (e) {
       try {
-        const res = await auth.signInWithPopup(provider);
-        const em = res.user?.email || "";
-        if (!emailDomainAllowed(em)) {
-          setStatus("Domínio não autorizado: " + em);
-          await auth.signOut();
-          return;
-        }
-        location.replace(safeReturn);
-      } catch (e) {
-        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user")) {
-          try {
-            await auth.signInWithRedirect(provider);
-            setStatus("Redirecionando para Microsoft...");
-          } catch (e2) {
-            console.error(e2);
-            setStatus("Falha no redirect: " + (e2.message || e2));
-          }
-        } else {
-          console.error(e);
-          setStatus((e && e.message) ? e.message : "Falha ao iniciar login.");
-        }
+        await auth.signInWithRedirect(provider);
+        setStatus("Redirecionando para Microsoft…");
+      } catch (e2) {
+        console.error("signInWithRedirect:", e2);
+        setStatus((e2 && (e2.code + " – " + e2.message)) || "Falha ao iniciar login.");
       }
-    });
-  })();
-  </script>
-</body>
-</html>
+    }
+  });
+})();
+</script>
