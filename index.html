@@ -1,4 +1,33 @@
-<script data-cfasync="false">
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Talentos Consultoria</title>
+  <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase compat (mantido) -->
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <!-- Seus arquivos já existentes -->
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
+  <style>
+    body { background:#0b1020; color:#e5e7eb; }
+    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:24px; }
+    .btn{ display:inline-block; padding:10px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:inherit; cursor:pointer; }
+    .btn:hover{ border-color:#3b82f6; }
+    .muted{ color:#9aa0aa; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="card w-full max-w-xl">
+    <h1 class="text-3xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
+    <p class="muted mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
+    <button id="btnLogin" class="btn">Entrar com Microsoft</button>
+    <p id="status" class="muted mt-3"></p>
+  </div>
+
+ <script data-cfasync="false">
 (function(){
   const cfg = window.TalentosConfig || {};
   const statusEl = document.getElementById("status");
@@ -68,3 +97,4 @@
   });
 })();
 </script>
+
