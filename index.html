@@ -18,6 +18,12 @@
     .card{ max-width: 880px }
     code,kbd{ background:#f3f4f6; padding:2px 6px; border-radius:6px }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    if (!window.firebase?.apps?.length) { firebase.initializeApp(TalentosConfig.firebaseConfig); }
+  </script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-6">
   <div class="card w-full bg-white rounded-2xl shadow p-6">

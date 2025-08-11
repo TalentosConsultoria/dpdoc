@@ -9,6 +9,12 @@
   <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script data-cfasync="false" src="./config.js?v=3.6"></script>
   <script data-cfasync="false" src="./auth-guard.js?v=3.6"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    if (!window.firebase?.apps?.length) { firebase.initializeApp(TalentosConfig.firebaseConfig); }
+  </script>
 </head>
 <body class="min-h-screen bg-gray-50">
   <div class="max-w-3xl mx-auto p-6">
