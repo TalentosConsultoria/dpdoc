@@ -1,6 +1,24 @@
-/**
- * Guard unificado para páginas protegidas (compat 10.12.4)
- */
+// --- AUTO-INIT de segurança: garante App DEFAULT antes de usar auth ---
+(function () {
+  try {
+    var hasCompat = (typeof firebase !== 'undefined') && firebase.apps && firebase.apps.length > 0;
+    var hasMod = (typeof firebase !== 'undefined') && firebase.getApps && firebase.getApps().length > 0;
+    if (!hasCompat && !hasMod) {
+      var cfg = (window.TalentosConfig && (TalentosConfig.firebaseConfig || TalentosConfig)) || null;
+      if (cfg) {
+        firebase.initializeApp(cfg);
+        console.log("[guard] Firebase App inicializado pelo guard (fallback).");
+      } else {
+        console.warn("[guard] Sem config para inicializar Firebase (TalentosConfig não encontrado).");
+      }
+    } else {
+      console.log("[guard] Firebase App já estava inicializado.");
+    }
+  } catch (e) {
+    console.error("[guard] Falha no auto-init do Firebase:", e);
+  }
+})();
+
 (function (global) {
   function sameOrigin(url) {
     try {
@@ -14,10 +32,7 @@
     let url; try { url = new URL(candidate, window.location.href); } catch { return TalentosConfig.DEFAULT_RETURN; }
     if (!sameOrigin(url.href)) return TalentosConfig.DEFAULT_RETURN;
     if (isLoginPath(url.pathname)) return TalentosConfig.DEFAULT_RETURN;
-    // Mapear raiz "/" para index.html em hosts estáticos
-    if (url.pathname === "/" || url.pathname === "") {
-      return "index.html" + url.search + url.hash;
-    }
+    if (url.pathname === "/" || url.pathname === "") return "index.html" + url.search + url.hash;
     return url.pathname + url.search + url.hash;
   }
   async function ensureFirebaseAuthReady() {

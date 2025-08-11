@@ -1,5 +1,4 @@
 (function (global) {
-  // === Firebase config REAL (Talentos) ===
   const firebaseConfig = {
     apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
     authDomain: "talentosbd-e4206.firebaseapp.com",
@@ -10,7 +9,6 @@
     measurementId: "G-S464LNX2J9"
   };
 
-  // === Inicialização do Firebase (compat) ===
   if (!global.firebase) {
     console.error("[config] Firebase SDK não carregado. Inclua firebase-app-compat e firebase-auth-compat antes de config.js");
   } else {
@@ -28,20 +26,16 @@
     }
   }
 
-  // === Exposição de parâmetros p/ o guard & login ===
   global.TalentosConfig = {
-    firebaseConfig: firebaseConfig,                  // <- exatamente como você pediu
+    firebaseConfig: firebaseConfig,
     ALLOWED_DOMAINS: ["talentosconsultoria.com.br"],
     LOGIN_PAGE: "login.html",
     DEFAULT_RETURN: "index.html",
     ALLOWED_ORIGINS_DEBUG: []
   };
-
-  // Aliases para compatibilidade com variantes anteriores
   global.TalentosConfig.allowedDomains = global.TalentosConfig.ALLOWED_DOMAINS;
   global.TalentosConfig.redirectAfterLogin = global.TalentosConfig.DEFAULT_RETURN;
   global.TalentosConfig.loginPage = global.TalentosConfig.LOGIN_PAGE;
 
-  // Sem placeholders
   global.__TalentosHasPlaceholderConfig = function() { return false; };
 })(window);
