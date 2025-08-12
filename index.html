@@ -1,70 +1,36 @@
 <!DOCTYPE html>
-<html lang="pt-br" class="scroll-smooth">
+<html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DPDoc • Talentos Consultoria</title>
-
-  <!-- Tailwind (para layout) -->
+  <title>DPDoc • Central de Ferramentas</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
-          colors: {
-            primary: '#004aad',
-            secondary: '#196dff',
-            background: '#f1f5f9',
-            card: '#ffffff',
-          },
-        },
-      },
-    };
-  </script>
+  <style>body{background:#f7f7f9}</style>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
 
-  <!-- Fonte -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    body{ background:#f7f7f9 }
-    .card{ max-width: 980px }
-    code,kbd{ background:#f3f4f6; padding:2px 6px; border-radius:6px }
-  </style>
-
-  <!-- Firebase compat 10.12.4 (app, auth e firestore) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 </head>
-
-<body class="bg-background flex flex-col min-h-screen font-sans">
-  <!-- HEADER -->
-  <header class="bg-white shadow-md p-4 sticky top-0 z-50">
-    <div class="container mx-auto flex justify-between items-center">
-      <a href="index.html" class="flex items-center space-x-2">
-        <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Talentos" class="h-10 rounded-full shadow-md">
-        <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
-      </a>
-
+<body class="min-h-screen flex flex-col">
+  <header class="bg-white shadow p-4 sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="https://media.glassdoor.com/sql/2733569/talentos-consultoria-squarelogo-1649741391944.png" class="w-10 h-10 rounded-full" alt="Talentos">
+        <h1 class="text-xl font-semibold">Talentos Consultoria — DPDoc</h1>
+      </div>
       <nav class="relative">
-        <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
-          <span>Ferramentas</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
-          <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
-          <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
-          <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+        <button id="btnMenu" class="px-3 py-2 rounded-lg border">Ferramentas ▾</button>
+        <div id="menu" class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow hidden">
+          <a class="block px-4 py-2 hover:bg-gray-50" href="./qlp-format.html">Corrigir CPFs (QLP)</a>
+          <a class="block px-4 py-2 hover:bg-gray-50" href="./format-bancodoc.html">Formatar BancoDoc (BDOC)</a>
+          <a class="block px-4 py-2 hover:bg-gray-50" href="./pdf-tool.html">Juntar/Editar PDFs</a>
         </div>
       </nav>
     </div>
   </header>
 
+<<<<<<< Updated upstream
   <!-- CONTEÚDO -->
   <main class="flex-grow flex justify-center items-start p-6">
     <div class="card w-full bg-white rounded-2xl shadow p-6">
@@ -103,13 +69,18 @@
         </div>
       </div>
     </div>
+=======
+  <main class="flex-1 grid place-items-center px-4">
+    <section class="bg-white rounded-2xl shadow p-8 max-w-3xl w-full text-center">
+      <h2 class="text-3xl font-bold mb-3">Bem‑vindo(a) à sua Central de Ferramentas</h2>
+      <p class="text-gray-600">Use o menu <b>Ferramentas</b> no topo para abrir o que você precisa.</p>
+    </section>
+>>>>>>> Stashed changes
   </main>
 
-  <!-- FOOTER -->
-  <footer class="bg-gray-800 text-white text-center p-4">
-    <p>&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
-  </footer>
+  <footer class="text-center text-sm text-gray-500 py-6">© 2025 Talentos Consultoria</footer>
 
+<<<<<<< Updated upstream
   <!-- APP SCRIPT -->
   <script src="./config.js"></script>
   <script>
@@ -195,6 +166,15 @@
           });
       }
     };
+=======
+  <script>
+    const btn = document.getElementById('btnMenu');
+    const menu = document.getElementById('menu');
+    btn.addEventListener('click', ()=> menu.classList.toggle('hidden'));
+    document.addEventListener('click', (e)=>{ if(!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');});
+>>>>>>> Stashed changes
   </script>
+<script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
+
 </body>
 </html>

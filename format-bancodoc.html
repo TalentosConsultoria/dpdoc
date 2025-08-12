@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<<<<<<< Updated upstream
 <html lang="pt-BR">
 <head>
 <style>html[data-auth="checking"] body{visibility:hidden}</style>
@@ -299,5 +300,80 @@
       });
     }
   </script>
+=======
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Formatar BancoDoc (BDOC)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <style>body{background:#f7f7f9}</style>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
+
+</head>
+<body class="min-h-screen px-4 py-8">
+  <div class="max-w-3xl mx-auto">
+    <a href="./index.html" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white shadow-sm hover:shadow mb-6">← Voltar para o Menu</a>
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h1 class="text-3xl font-bold mb-6">Formatar BancoDoc</h1>
+      <p class="mb-4 text-gray-600">Envie um arquivo Excel/CSV do BancoDoc e baixará um novo arquivo com colunas padronizadas (CPF só dígitos, Nome em maiúsculas, datas dd/mm/aaaa).</p>
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" class="block w-full mb-4"/>
+      <button id="btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Formatar & Baixar</button>
+      <pre id="log" class="text-xs text-gray-600 whitespace-pre-wrap mt-4"></pre>
+    </div>
+  </div>
+
+<script>
+function cleanCPF(v){ return String(v||'').replace(/\D+/g,'').padStart(11,'0'); }
+function toUpper(v){ return String(v||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toUpperCase(); }
+function fmtDate(v){
+  if(!v) return '';
+  // tenta excel serial
+  if(typeof v === 'number'){
+    const d = new Date(Math.round((v - 25569)*86400*1000));
+    return d.toLocaleDateString('pt-BR');
+  }
+  const d = new Date(v);
+  if(!isNaN(d)) return d.toLocaleDateString('pt-BR');
+  return String(v);
+}
+
+document.getElementById('btn').addEventListener('click', async ()=>{
+  const f = document.getElementById('file').files[0];
+  if(!f){ alert('Selecione um arquivo.'); return; }
+  const buf = await f.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array'});
+  const name = wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], {defval:''});
+
+  const out = rows.map(r=>{
+    return {
+      CPF: cleanCPF(r.CPF || r.cpf || r['CPF/CNPJ']),
+      NOME: toUpper(r.Nome || r.NOME || r.name),
+      ADMISSAO: fmtDate(r.Admissao || r.ADMISSAO || r['Data Admissao']),
+      DEMISSAO: fmtDate(r.Demissao || r['Data Demissao'] || r.DEMISSAO),
+      ...r
+    };
+  });
+
+  const outWB = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(out);
+  XLSX.utils.book_append_sheet(outWB, ws, 'BDOC_FORMATADO');
+  const ab = XLSX.write(outWB, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([ab], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bancodoc_formatado.xlsx';
+  a.click();
+  document.getElementById('log').textContent = 'Linhas processadas: ' + out.length;
+});
+</script>
+<script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
+
+>>>>>>> Stashed changes
 </body>
 </html>

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<<<<<<< Updated upstream
 <html lang="pt-BR">
 <head>
 <style>html[data-auth="checking"] body{visibility:hidden}</style>
@@ -277,5 +278,112 @@
       });
     }
   </script>
+=======
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Corrigir CPFs com Base em Relatório (QLP)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <style>body{background:#f7f7f9}</style>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
+
+</head>
+<body class="min-h-screen px-4 py-8">
+  <div class="max-w-3xl mx-auto">
+    <a href="./index.html" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white shadow-sm hover:shadow mb-6">← Voltar para o Menu</a>
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h1 class="text-3xl font-bold mb-6">Corrigir CPFs com Base em Relatório</h1>
+
+      <p class="mb-6 text-gray-600">Envie abaixo as três planilhas (XLSX/XLS/CSV). O botão irá produzir uma nova planilha já com CPFs limpos (apenas dígitos) e mesclagem simples dos dados.</p>
+
+      <div class="space-y-6">
+        <div>
+          <label class="block font-medium mb-2">1. Documentos não Depositados de Admissão:</label>
+          <input id="f1" type="file" accept=".xlsx,.xls,.csv" class="block w-full"/>
+        </div>
+        <div>
+          <label class="block font-medium mb-2">2. Relatório de Empregados:</label>
+          <input id="f2" type="file" accept=".xlsx,.xls,.csv" class="block w-full"/>
+        </div>
+        <div>
+          <label class="block font-medium mb-2">3. QLP geral:</label>
+          <input id="f3" type="file" accept=".xlsx,.xls,.csv" class="block w-full"/>
+        </div>
+        <button id="btnRun" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Corrigir e Baixar Planilha</button>
+        <div class="mt-4 h-3 bg-gray-100 rounded-full overflow-hidden"><div id="bar" class="h-full w-0 bg-blue-600 transition-all"></div></div>
+        <pre id="log" class="text-xs text-gray-600 whitespace-pre-wrap mt-2"></pre>
+      </div>
+    </div>
+  </div>
+
+<script>
+function setBar(p){ document.getElementById('bar').style.width = p + '%'; }
+function log(msg){ const el=document.getElementById('log'); el.textContent += msg + "\n"; }
+
+async function fileToWorkbook(file){
+  const buf = await file.arrayBuffer();
+  return XLSX.read(buf, {type:'array'});
+}
+
+function sheetToArray(sheet){
+  return XLSX.utils.sheet_to_json(sheet, {defval:""});
+}
+
+function cleanCPF(v){
+  return String(v||'').replace(/\D+/g,'').padStart(11,'0');
+}
+
+document.getElementById('btnRun').addEventListener('click', async ()=>{
+  const f1=document.getElementById('f1').files[0];
+  const f2=document.getElementById('f2').files[0];
+  const f3=document.getElementById('f3').files[0];
+  if(!f1 || !f2 || !f3){ alert('Envie os três arquivos.'); return; }
+
+  try{
+    setBar(10); log('Lendo planilhas...');
+    const [wb1,wb2,wb3] = await Promise.all([fileToWorkbook(f1), fileToWorkbook(f2), fileToWorkbook(f3)]);
+
+    function firstSheetRows(wb){ const name = wb.SheetNames[0]; return sheetToArray(wb.Sheets[name]); }
+    const s1 = firstSheetRows(wb1).map(r=>({...r, CPF: cleanCPF(r.CPF || r.cpf || r['CPF/CNPJ'] || r['Cpf'] )}));
+    setBar(40);
+    const s2 = firstSheetRows(wb2).map(r=>({...r, CPF: cleanCPF(r.CPF || r.cpf || r['CPF'] )}));
+    setBar(60);
+    const s3 = firstSheetRows(wb3).map(r=>({...r, CPF: cleanCPF(r.CPF || r.cpf || r['cpf'] )}));
+    setBar(70);
+
+    // Mescla simples por CPF (prioridade s1 > s2 > s3)
+    const map = new Map();
+    for(const row of [...s3, ...s2, ...s1]){
+      if(!row.CPF) continue;
+      map.set(row.CPF, {...(map.get(row.CPF)||{}), ...row});
+    }
+    const merged = Array.from(map.values());
+
+    // Gera workbook final
+    const outWB = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(merged);
+    XLSX.utils.book_append_sheet(outWB, ws, 'RESULTADO');
+
+    const out = XLSX.write(outWB, {bookType:'xlsx', type:'array'});
+    const blob = new Blob([out], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'resultado_cpf_corrigido.xlsx';
+    a.click();
+    setBar(100); log('Concluído! Arquivo baixado: resultado_cpf_corrigido.xlsx');
+  }catch(e){
+    console.error(e);
+    alert('Falha ao processar: ' + (e.message||e));
+  }
+});
+</script>
+<script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
+
+>>>>>>> Stashed changes
 </body>
 </html>

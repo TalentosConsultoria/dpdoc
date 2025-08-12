@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<<<<<<< Updated upstream
 <html lang="pt-BR">
 <head>
 <style>html[data-auth="checking"] body{visibility:hidden}</style>
@@ -337,8 +338,45 @@
 
         <div id="thumbnails-container">
             <p id="placeholder">As miniaturas das páginas aparecerão aqui.</p>
+=======
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Juntar / Reorganizar PDFs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>body{background:#f7f7f9}</style>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
+
+</head>
+<body class="min-h-screen px-4 py-8">
+  <div class="max-w-4xl mx-auto">
+    <a href="./index.html" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white shadow-sm hover:shadow mb-6">← Voltar para o Menu</a>
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h1 class="text-3xl font-bold mb-6">Juntar, Reorganizar e Excluir Páginas de PDFs</h1>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="space-y-3">
+          <label class="block font-medium">Selecione um ou mais PDFs</label>
+          <input id="files" type="file" accept="application/pdf" multiple class="block w-full"/>
+          <label class="block font-medium">Intervalo de páginas (ex: 1-3,5,8-10) — opcional</label>
+          <input id="ranges" placeholder="vazio = todas as páginas" class="w-full border rounded-lg px-3 py-2"/>
+          <label class="block font-medium">Nome do arquivo de saída</label>
+          <input id="outname" value="pdfs_juntos_e_editados.pdf" class="w-full border rounded-lg px-3 py-2"/>
+          <button id="btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Baixar PDF</button>
         </div>
+        <div>
+          <p class="text-sm text-gray-600 mb-2">Pré‑visualização rápida (nomes dos arquivos e nº de páginas):</p>
+          <ul id="preview" class="text-sm text-gray-700 list-disc pl-5"></ul>
+>>>>>>> Stashed changes
+        </div>
+      </div>
     </div>
+<<<<<<< Updated upstream
 
     <div id="fixed-download-bar">
         <div class="download-controls">
@@ -698,5 +736,67 @@
             URL.revokeObjectURL(url);
         }
     </script>
+=======
+  </div>
+
+<script>
+function parseRanges(txt, max){
+  if(!txt) return null; // todas
+  const parts = txt.split(',').map(s=>s.trim()).filter(Boolean);
+  const pages = new Set();
+  for(const p of parts){
+    if(p.includes('-')){
+      let [a,b]=p.split('-').map(n=>parseInt(n,10));
+      if(isNaN(a)||isNaN(b)) continue;
+      if(a>b) [a,b]=[b,a];
+      for(let i=a;i<=b;i++) if(i>=1 && (!max || i<=max)) pages.add(i-1);
+    }else{
+      const n=parseInt(p,10);
+      if(!isNaN(n) && n>=1 && (!max || n<=max)) pages.add(n-1);
+    }
+  }
+  return Array.from(pages).sort((x,y)=>x-y);
+}
+
+document.getElementById('files').addEventListener('change', async (e)=>{
+  const list = document.getElementById('preview');
+  list.innerHTML = '';
+  for(const f of e.target.files){
+    try{
+      const buf = await f.arrayBuffer();
+      const pdf = await PDFLib.PDFDocument.load(buf);
+      const li = document.createElement('li');
+      li.textContent = `${f.name} — ${pdf.getPageCount()} página(s)`;
+      list.appendChild(li);
+    }catch{ /* ignore */ }
+  }
+});
+
+document.getElementById('btn').addEventListener('click', async ()=>{
+  const files = Array.from(document.getElementById('files').files||[]);
+  if(!files.length){ alert('Selecione ao menos um PDF'); return; }
+  const outName = document.getElementById('outname').value || 'saida.pdf';
+  const rangesTxt = document.getElementById('ranges').value;
+
+  const out = await PDFLib.PDFDocument.create();
+  for(const f of files){
+    const buf = await f.arrayBuffer();
+    const src = await PDFLib.PDFDocument.load(buf);
+    const total = src.getPageCount();
+    const idxs = parseRanges(rangesTxt, total) ?? [...Array(total).keys()];
+    const pages = await out.copyPages(src, idxs);
+    pages.forEach(p=> out.addPage(p));
+  }
+  const bytes = await out.save();
+  const blob = new Blob([bytes], {type:'application/pdf'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = outName;
+  a.click();
+});
+</script>
+<script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
+
+>>>>>>> Stashed changes
 </body>
 </html>

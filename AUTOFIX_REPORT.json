@@ -1,0 +1,9 @@
+{
+  "injected_guard": {
+    "index.html": true,
+    "pdf-tool.html": true,
+    "format-bancodoc.html": true,
+    "qlp-format.html": true
+  },
+  "config_storageBucket_fixed": true
+}
