@@ -23,11 +23,10 @@
     .btn:hover{ background:#1f2937; }
     .muted{ color:#9ca3af; font-size:.875rem; }
     .err{ color:#fecaca; }
-    .row{ display:flex; gap:.5rem; }
   </style>
 
   <script>
-    // Sanitiza 'return' (evita recursão/login.html/return aninhado)
+    // Sanitiza 'return'
     (function () {
       "use strict";
       try {
@@ -42,7 +41,7 @@
           if (/[?&]return=/i.test(u.search)) hasNested = true;
           isLoginTarget = /(^|\/)login(\.html)?$/i.test(u.pathname);
         } catch {
-          isLoginTarget = true; // inválida -> insegura
+          isLoginTarget = true;
         }
         if (tooLong || hasNested || isLoginTarget) {
           qs.delete("return");
@@ -70,26 +69,30 @@
   <div class="card rounded-2xl p-6 w-full max-w-md">
     <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
     <p id="status" class="muted mb-4">Aguardando autenticação...</p>
-    <div class="row">
-      <button id="btnLogin" class="btn flex-1">Entrar com Microsoft</button>
-      <button id="btnLogout" class="btn">Sair</button>
+    <div class="grid gap-2">
+      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
+      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
     </div>
-    <p class="muted mt-3">Dica: se travar em loop, use <code>/login.html?noauto=1</code>.</p>
+    <p id="hint" class="muted mt-3"></p>
     <p id="err" class="muted err mt-2"></p>
   </div>
 
   <script>
     (function(){
-      const params = new URLSearchParams(location.search);
-      const rawReturn = params.get("return");
-      const noauto = params.get("noauto")==="1" || localStorage.getItem("talentos_noauto")==="1";
+      const qs = new URLSearchParams(location.search);
+      const rawReturn = qs.get("return");
+      const hasError = qs.has("error");
+      const noauto = qs.get("noauto")==="1" || hasError || localStorage.getItem("talentos_noauto")==="1";
+
       const status = document.getElementById("status");
+      const hint = document.getElementById("hint");
       const errEl = document.getElementById("err");
       const btnLogin = document.getElementById("btnLogin");
       const btnLogout = document.getElementById("btnLogout");
 
       function setErr(m){ if (errEl) errEl.textContent = m||""; }
       function setStatus(m){ if (status) status.textContent = m||""; }
+      function setHint(m){ if (hint) hint.textContent = m||""; }
 
       function buildProvider(){
         const p = new firebase.auth.OAuthProvider('microsoft.com');
@@ -124,7 +127,8 @@
           const auth = firebase.auth();
           await auth.signOut();
           try { localStorage.setItem("talentos_noauto","1"); } catch {}
-          setStatus("Sessão encerrada. Faça login quando desejar.");
+          setStatus("Sessão encerrada.");
+          setHint("Autologin desativado para esta máquina. Clique em 'Entrar com Microsoft' quando quiser entrar novamente.");
         } catch(e){}
       }
 
@@ -132,34 +136,38 @@
         const auth = firebase.auth();
         try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch{}
 
-        // Processa resultado do redirect antes de qualquer autologin
-        try { await auth.getRedirectResult(); } catch(e){ console.warn("getRedirectResult", e); }
+        // Processa redirect antes
+        try { await auth.getRedirectResult(); } catch(e){}
 
         auth.onAuthStateChanged(async (user) => {
           try{
             if (!user) {
               if (!noauto) { doLogin(); setStatus("Abrindo autenticador..."); }
-              else setStatus("Clique em 'Entrar com Microsoft' para continuar.");
+              else {
+                setStatus("Clique em 'Entrar com Microsoft' para continuar.");
+                if (hasError) setErr("Acesso negado para este domínio. Use sua conta corporativa.");
+                setHint("Dica: se ver looping, este login não dispara automaticamente. Use o botão.");
+              }
               return;
             }
-            // Filtro de domínio
+            // domínio
             const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
             const domain = String(user.email||"").split("@")[1]||"";
             if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
               setStatus("Domínio não permitido. Saindo...");
               try { await auth.signOut(); } catch(e){}
+              localStorage.setItem("talentos_noauto","1");
               location.replace("login.html?error=forbidden&noauto=1");
               return;
             }
+            // ok
             const ret = safeReturn(rawReturn);
             setStatus("Autenticado. Abrindo " + ret + "...");
-            // Limpa noauto (agora pode logar automáticamente numa próxima vez)
-            try { localStorage.removeItem("talentos_noauto"); } catch {}
+            localStorage.removeItem("talentos_noauto");
             location.replace(ret);
           }catch(e){
             console.error(e);
             setErr("Erro inesperado na autenticação.");
-            setStatus("");
           }
         });
 
