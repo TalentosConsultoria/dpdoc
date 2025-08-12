@@ -30,149 +30,20 @@
     </div>
   </header>
 
-<<<<<<< Updated upstream
-  <!-- CONTEÚDO -->
-  <main class="flex-grow flex justify-center items-start p-6">
-    <div class="card w-full bg-white rounded-2xl shadow p-6">
-      <div class="flex items-center justify-between gap-4 mb-4">
-        <h1 class="text-2xl font-semibold">DPDoc — Talentos Consultoria</h1>
-        <div id="userBox" class="hidden text-right">
-          <div class="text-sm text-gray-600">Autenticado como</div>
-          <div id="userEmail" class="font-medium"></div>
-        </div>
-      </div>
-
-      <!-- Status / mensagens -->
-      <div id="status" class="text-sm text-gray-700 mb-4">Carregando…</div>
-
-      <!-- LOGIN -->
-      <div id="loginBox" class="mb-6 hidden">
-        <p class="text-sm text-gray-700">Você precisa fazer login para acessar.</p>
-      </div>
-
-      <!-- APP -->
-      <div id="app" class="hidden space-y-6">
-        <div class="bg-card p-6 rounded-2xl shadow-sm">
-          <h2 class="text-lg font-semibold mb-1">Central de Ferramentas</h2>
-          <p class="text-sm text-gray-600">Utilize os links do menu para acessar as ferramentas que você precisa.</p>
-        </div>
-
-        <div class="p-4 rounded-xl bg-gray-50">
-          <div class="font-medium mb-1">Exemplo de acesso ao Firestore</div>
-          <p class="text-sm text-gray-600 mb-3">Clique para gravar e ler um doc de teste.</p>
-          <div class="flex gap-2">
-            <button id="btnWrite" class="px-3 py-2 rounded-lg border">Gravar doc</button>
-            <button id="btnRead"  class="px-3 py-2 rounded-lg border">Ler doc</button>
-            <button id="btnLogout" class="px-3 py-2 rounded-lg border">Sair</button>
-          </div>
-          <pre id="out" class="mt-3 text-xs whitespace-pre-wrap"></pre>
-        </div>
-      </div>
-    </div>
-=======
   <main class="flex-1 grid place-items-center px-4">
     <section class="bg-white rounded-2xl shadow p-8 max-w-3xl w-full text-center">
       <h2 class="text-3xl font-bold mb-3">Bem‑vindo(a) à sua Central de Ferramentas</h2>
       <p class="text-gray-600">Use o menu <b>Ferramentas</b> no topo para abrir o que você precisa.</p>
     </section>
->>>>>>> Stashed changes
   </main>
 
   <footer class="text-center text-sm text-gray-500 py-6">© 2025 Talentos Consultoria</footer>
 
-<<<<<<< Updated upstream
-  <!-- APP SCRIPT -->
-  <script src="./config.js"></script>
-  <script>
-    // ======== BOOT ========
-    const $ = (id) => document.getElementById(id);
-    const status = (msg) => { $("status").textContent = msg ?? ""; };
-    const show = (id, on) => { $(id).classList.toggle("hidden", !on); };
-
-    // Adiciona um listener para garantir que o script só rode após o carregamento da página
-    window.onload = (event) => {
-      (function init() {
-        try {
-          if (!firebase.apps.length) {
-            firebase.initializeApp(window.TalentosConfig.firebaseConfig);
-          }
-        } catch (e) {
-          console.error("[config] Erro ao iniciar Firebase", e);
-          status("Erro ao carregar a configuração do Firebase.");
-          return;
-        }
-        
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        auth.onAuthStateChanged(async (user) => {
-          if (user) {
-            // Usuário logado
-            $("userEmail").textContent = user.email;
-            show("userBox", true);
-            show("loginBox", false);
-            show("app", true);
-            status("");
-          } else {
-            // Sem usuário logado, redireciona para a página de login
-            show("app", false);
-            show("userBox", false);
-            show("loginBox", true);
-            location.replace("login.html");
-          }
-        });
-
-        // Ações do Firestore e logout
-        $("btnLogout")?.addEventListener("click", async () => {
-          await auth.signOut();
-        });
-
-        $("btnWrite")?.addEventListener("click", async () => {
-          const u = auth.currentUser;
-          if (!u) return;
-          try {
-            await db.collection("demo").doc(u.uid).set({
-              who: u.email,
-              when: firebase.firestore.FieldValue.serverTimestamp(),
-              hello: "world"
-            }, { merge: true });
-            $("out").textContent = "Gravou em demo/" + u.uid;
-          } catch (e) {
-            console.error("Erro ao gravar no Firestore:", e);
-            $("out").textContent = "Erro ao gravar: " + e.message;
-          }
-        });
-
-        $("btnRead")?.addEventListener("click", async () => {
-          const u = auth.currentUser;
-          if (!u) return;
-          try {
-            const snap = await db.collection("demo").doc(u.uid).get();
-            $("out").textContent = snap.exists ? JSON.stringify(snap.data(), null, 2) : "Nada lido.";
-          } catch (e) {
-            console.error("Erro ao ler do Firestore:", e);
-            $("out").textContent = "Erro ao ler: " + e.message;
-          }
-        });
-      })();
-
-      // dropdown
-      const dropdownButton = document.getElementById('tools-dropdown-button');
-      const dropdownMenu = document.getElementById('tools-dropdown-menu');
-      if (dropdownButton && dropdownMenu) {
-          dropdownButton.addEventListener('click', () => dropdownMenu.classList.toggle('hidden'));
-          window.addEventListener('click', (ev) => {
-              if (!dropdownButton.contains(ev.target)) dropdownMenu.classList.add('hidden');
-          });
-      }
-    };
-=======
   <script>
     const btn = document.getElementById('btnMenu');
     const menu = document.getElementById('menu');
     btn.addEventListener('click', ()=> menu.classList.toggle('hidden'));
     document.addEventListener('click', (e)=>{ if(!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');});
->>>>>>> Stashed changes
   </script>
 <script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
 
