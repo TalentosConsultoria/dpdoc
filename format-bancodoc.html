@@ -1,321 +1,338 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br" class="scroll-smooth">
 <head>
-<style>html[data-auth="checking"] body{visibility:hidden}</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unificação de Planilhas: QLP - Bancodoc</title>
 
-<script>
-  // Early guard: marca como "checking" para evitar exibir conteúdo antes da verificação
-  try { document.documentElement.setAttribute('data-auth','checking'); } catch(_) {}
-</script>
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Corrigir CPFs com Base em Relatório</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background-color: #f4f4f4;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    input[type="file"] {
-      display: block;
-      margin: 10px 0;
-    }
-    button {
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    pre {
-      background-color: #eee;
-      padding: 10px;
-      border-radius: 5px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-    /* Estilo para o botão de voltar */
-    .back-button {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        background-color: #007BFF;
-        color: white;
-        text-decoration: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        font-weight: bold;
-        transition: background-color 0.3s;
-    }
-    .back-button:hover {
-        background-color: #0056b3;
-    }
-  </style>
-
-  <!-- Firebase Auth Guard -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-
-  <!-- Script de configuração e autenticação -->
-  <script>
-    // ======== CONFIG APP (copiado do config.js) ========
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.firebasestorage.app",
-      messagingSenderId: "580727253031",
-      appId: "1:580727253031:web:5368302ef0da6277788602",
-      measurementId: "G-S464LNX2J9"
-    };
-
-    // ======== AUTH GUARD ========
-    window.onload = () => {
-      try {
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        const auth = firebase.auth();
-        auth.onAuthStateChanged(user => {
-          if (!user) {
-            // Use window.location.origin para construir um URL absoluto e evitar o erro
-            window.location.replace(window.location.origin + "/login.html");
-          }
-        });
-      } catch (e) {
-        console.error("Auth guard init error:", e);
-      }
-    };
-  </script>
-
-</head>
-<body>
-  <a href="index.html" class="back-button">← Voltar para o Menu</a>
-  <div class="container">
-    <h1>Corrigir CPFs com Base em Relatório</h1>
-    <p>Envie abaixo as três planilhas:</p>
-    <label>1. Documentos não Depositados de Admissão:</label>
-    <input type="file" id="admissaoFile" accept=".xlsx,.csv" />
-    <br><br>
-    <label>2. Relatório de Empregados:</label>
-    <input type="file" id="relatorioFile" accept=".xlsx,.csv" />
-    <br><br>
-    <label>3. QLP geral:</label>
-    <input type="file" id="cadastroFile" accept=".xlsx,.csv" />
-    <br><br>
-    <button onclick="processarArquivos()">Corrigir e Baixar Planilha</button>
-    <pre id="relatorioOutput"></pre>
-  </div>
-
-  <script>
-    function normalizarTexto(texto) {
-      if (typeof texto !== 'string') return '';
-      return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
-    }
-
-    function normalizarCPF(cpf) {
-        if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
-        let numeros = String(cpf).replace(/\D/g, '');
-        return numeros.padStart(11, '0');
-    }
-    
-    function excelDateToJSDate(serial) {
-      if (typeof serial !== 'number' || serial <= 0) return serial;
-
-      const utc_days  = Math.floor(serial - 25569);
-      const utc_value = utc_days * 86400;
-      const date_info = new Date(utc_value * 1000);
-      const fractional_day = serial - Math.floor(serial) + 0.0000001;
-      let total_seconds = Math.floor(86400 * fractional_day);
-      const seconds = total_seconds % 60;
-      total_seconds -= seconds;
-      const minutes = total_seconds / 60 % 60;
-      total_seconds -= minutes * 60;
-      const hours = Math.floor(total_seconds / 3600);
-      const day = String(date_info.getDate()).padStart(2, '0');
-      const month = String(date_info.getMonth() + 1).padStart(2, '0');
-      const year = date_info.getFullYear();
-      return `${day}/${month}/${year}`;
-    }
-
-    function formatarCPF(cpf) {
-      const numeros = String(cpf).replace(/\D/g, "");
-      
-      const cpfFormatado = numeros.padStart(11, "0");
-
-      if (cpfFormatado.length === 11) {
-        return cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-      }
-      
-      return cpf;
-    }
-
-    async function processarArquivos() {
-      const admissaoInput = document.getElementById('admissaoFile').files[0];
-      const relatorioInput = document.getElementById('relatorioFile').files[0];
-      const cadastroInput = document.getElementById('cadastroFile').files[0];
-      const relatorioOutput = document.getElementById('relatorioOutput');
-      relatorioOutput.textContent = '';
-
-      if (!admissaoInput || !relatorioInput || !cadastroInput) {
-        alert("Envie as três planilhas.");
-        return;
-      }
-
-      const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
-        fileToJson(admissaoInput),
-        fileToJson(relatorioInput),
-        fileToJson(cadastroInput, { header: 1 })
-      ]);
-
-      if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
-          alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
-          return;
-      }
-
-      // -- Etapa 1: Corrigir CPFs na Planilha de Admissão com base no Relatório --
-      const admissaoHeaders = Object.keys(admissaoJson[0] || {});
-      const relatorioHeaders = Object.keys(relatorioJson[0] || {});
-
-      const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
-      const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
-      
-      let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
-      let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
-      let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
-      let colunaCpfRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("cpf") || h.includes("documento") || h.includes("registro"))];
-
-      const erros = [];
-      if (!colunaNomeAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de nome.");
-      if (!colunaCpfAdmissao) erros.push("❌ A planilha de admissão não possui uma coluna de CPF.");
-      if (!colunaNomeRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de nome.");
-      if (!colunaCpfRelatorio) erros.push("❌ A planilha de relatório não possui uma coluna de CPF.");
-
-      if (erros.length > 0) {
-        alert(erros.join("\n"));
-        return;
-      }
-
-      const mapaCpfCorreto = new Map();
-      for (const linha of relatorioJson) {
-        const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
-        const cpf = linha[colunaCpfRelatorio]?.toString();
-        if (nomeNormalizado && cpf && !cpf.includes("*")) {
-          mapaCpfCorreto.set(nomeNormalizado, cpf);
-        }
-      }
-
-      let cpfsAtualizados = 0;
-      for (const linha of admissaoJson) {
-        const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
-        if (mapaCpfCorreto.has(nomeNormalizado)) {
-          linha[colunaCpfAdmissao] = formatarCPF(mapaCpfCorreto.get(nomeNormalizado));
-          cpfsAtualizados++;
-        }
-      }
-      
-      // -- Etapa 2: Adicionar colunas de Cadastro e Admissão da 3ª planilha (QLP) --
-      const qlpData = cadastroRaw;
-      
-      // Índices de coluna para as posições A, H e P (índices 0, 7, 15)
-      const colunaIndiceCadastro = 0;
-      const colunaIndiceAdmissao = 7;
-      const colunaIndiceCpfCadastro = 15;
-      
-      const mapaCadastroAdmissao = new Map();
-      for (const linha of qlpData) {
-          const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
-          const cadastroValue = linha[colunaIndiceCadastro] || '';
-          const admissaoValue = linha[colunaIndiceAdmissao] || '';
-
-          if (cpfNormalizado && cadastroValue && admissaoValue) {
-              mapaCadastroAdmissao.set(cpfNormalizado, {
-                  cadastro: cadastroValue,
-                  admissao: admissaoValue
-              });
-          }
-      }
-
-      // Encontra o índice da coluna de nome na planilha de admissão
-      const nomeColIndexAdmissao = admissaoHeaders.indexOf(colunaNomeAdmissao);
-
-      // Adiciona as novas colunas e preenche com os dados correspondentes
-      const novaPlanilhaFinal = [];
-      const cabecalhoFinal = [...admissaoHeaders];
-      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Admissão');
-      cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Cadastro');
-      novaPlanilhaFinal.push(cabecalhoFinal);
-      
-      for(const linha of admissaoJson) {
-          const cpfNormalizado = normalizarCPF(linha[colunaCpfAdmissao]);
-          const dadosExtras = mapaCadastroAdmissao.get(cpfNormalizado) || { cadastro: '', admissao: '' };
-          
-          const novaLinha = [...Object.values(linha)];
-          novaLinha.splice(nomeColIndexAdmissao, 0, excelDateToJSDate(dadosExtras.admissao));
-          novaLinha.splice(nomeColIndexAdmissao, 0, dadosExtras.cadastro);
-          novaPlanilhaFinal.push(novaLinha);
-      }
-
-      let mensagem = `✅ Processamento concluído.\n\n`;
-      mensagem += `CPFs atualizados: ${cpfsAtualizados}\n`;
-      mensagem += `Colunas de Cadastro e Admissão adicionadas.`;
-      
-      relatorioOutput.textContent = mensagem;
-
-      // Lógica de download
-      const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
-      const novoWorkbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
-      XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
-    }
-
-    function fileToJson(file, options = {}) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        const extension = file.name.split('.').pop().toLowerCase();
-
-        reader.onload = (e) => {
-          try {
-            let workbook;
-            if (extension === 'csv') {
-              workbook = XLSX.read(e.target.result, { type: 'string', FS: ';' });
-            } else {
-              const data = new Uint8Array(e.target.result);
-              workbook = XLSX.read(data, { type: 'array' });
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad',
+                        secondary: '#196dff',
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
             }
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, options);
-            resolve(json);
-          } catch (err) {
-            reject(err);
-          }
-        };
-
-        reader.onerror = reject;
-
-        if (extension === 'csv') {
-          reader.readAsText(file);
-        } else {
-          reader.readAsArrayBuffer(file);
         }
-      });
-    }
-  </script>
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Firebase (Compat) + Config + Guard -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+    <script src="./config.js?v=20250812"></script>
+    <!-- HOTFIX: garante TalentosConfig mesmo que config.js não a defina -->
+    <script>
+      window.TalentosConfig = window.TalentosConfig || {
+        ALLOWED_DOMAINS: ["talentosconsultoria.com.br"],
+        LOGIN_PAGE: "login.html",
+        DEFAULT_RETURN: "index.html",
+        AAD_TENANT: "talentosconsultoria.com.br",
+        AAD_TENANT_ID: "cba0be9f-94ad-4a26-b291-fa90af7491ee"
+      };
+    </script>
+    <script src="./auth-guard.js?v=20250812"></script>
+    
+</head>
+
+<body class="bg-background flex flex-col min-h-screen font-sans">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+            </a>
+            <nav class="relative">
+                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+                    <span>Ferramentas</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
+                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
+                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow flex justify-center items-center p-4">
+        <div class="bg-card p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-2xl">
+            <div class="text-center">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Unificação de Planilhas: QLP - Bancodoc</h1>
+                <p class="text-gray-600 mb-8">Importe as três planilhas abaixo para corrigir os dados e gerar o arquivo final.</p>
+            </div>
+            
+            <div class="space-y-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors duration-200 hover:border-primary hover:bg-blue-50">
+                    <label for="admissaoFile" class="cursor-pointer">
+                        <strong class="block text-lg font-semibold text-gray-800">Documentos não Depositados de Admissão</strong>
+                        <span class="text-gray-500 text-sm">Clique aqui para importar ou arraste o arquivo</span>
+                        <span id="admissaoFileName" class="block mt-1 text-sm text-primary font-medium italic"></span>
+                    </label>
+                    <input type="file" id="admissaoFile" accept=".xlsx,.csv" class="hidden" />
+                </div>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors duration-200 hover:border-primary hover:bg-blue-50">
+                    <label for="relatorioFile" class="cursor-pointer">
+                        <strong class="block text-lg font-semibold text-gray-800">Relatório de Empregados</strong>
+                        <span class="text-gray-500 text-sm">Clique aqui para importar ou arraste o arquivo</span>
+                        <span id="relatorioFileName" class="block mt-1 text-sm text-primary font-medium italic"></span>
+                    </label>
+                    <input type="file" id="relatorioFile" accept=".xlsx,.csv" class="hidden"/>
+                </div>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors duration-200 hover:border-primary hover:bg-blue-50">
+                    <label for="cadastroFile" class="cursor-pointer">
+                        <strong class="block text-lg font-semibold text-gray-800">QLP Geral</strong>
+                        <span class="text-gray-500 text-sm">Clique aqui para importar ou arraste o arquivo</span>
+                        <span id="cadastroFileName" class="block mt-1 text-sm text-primary font-medium italic"></span>
+                    </label>
+                    <input type="file" id="cadastroFile" accept=".xlsx,.csv" class="hidden"/>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <button onclick="processarArquivos()" class="bg-primary text-white font-semibold py-3 px-8 rounded-lg hover:bg-secondary transition-colors duration-300 w-full sm:w-auto">
+                    Corrigir e Baixar Planilha
+                </button>
+            </div>
+            
+            <pre id="relatorioOutput" class="bg-gray-100 p-4 rounded-lg text-left text-sm text-gray-700 whitespace-pre-wrap break-words mt-6 min-h-[50px]"></pre>
+        </div>
+    </main>
+    
+    <footer class="bg-gray-800 text-white text-center p-4">
+        <p>&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        // Script para o dropdown do cabeçalho
+        const dropdownButton = document.getElementById('tools-dropdown-button');
+        const dropdownMenu = document.getElementById('tools-dropdown-menu');
+        dropdownButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+        window.addEventListener('click', () => {
+            if (!dropdownMenu.classList.contains('hidden')) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+
+        // FUNCIONALIDADE DA FERRAMENTA DE UNIFICAÇÃO
+        // Adiciona event listeners para atualizar o nome do arquivo
+        document.getElementById('admissaoFile').addEventListener('change', function(e) {
+            document.getElementById('admissaoFileName').textContent = e.target.files.length > 0 ? e.target.files[0].name : '';
+        });
+        document.getElementById('relatorioFile').addEventListener('change', function(e) {
+            document.getElementById('relatorioFileName').textContent = e.target.files.length > 0 ? e.target.files[0].name : '';
+        });
+        document.getElementById('cadastroFile').addEventListener('change', function(e) {
+            document.getElementById('cadastroFileName').textContent = e.target.files.length > 0 ? e.target.files[0].name : '';
+        });
+
+        function normalizarTexto(texto) {
+            if (typeof texto !== 'string') return '';
+            return texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "").trim();
+        }
+
+        function normalizarCPF(cpf) {
+            if (typeof cpf !== 'string' && typeof cpf !== 'number') return '';
+            let numeros = String(cpf).replace(/\D/g, '');
+            return numeros.padStart(11, '0');
+        }
+        
+        function excelDateToJSDate(serial) {
+            if (typeof serial !== 'number' || serial <= 0) return serial;
+            const utc_days  = Math.floor(serial - 25569);
+            const utc_value = utc_days * 86400;
+            const date_info = new Date(utc_value * 1000);
+            const day = String(date_info.getDate()).padStart(2, '0');
+            const month = String(date_info.getMonth() + 1).padStart(2, '0');
+            const year = date_info.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatarCPF(cpf) {
+            const numeros = String(cpf).replace(/\D/g, "");
+            const cpfFormatado = numeros.padStart(11, "0");
+            if (cpfFormatado.length === 11) {
+                return cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+            }
+            return cpf;
+        }
+
+        async function processarArquivos() {
+            const admissaoInput = document.getElementById('admissaoFile').files[0];
+            const relatorioInput = document.getElementById('relatorioFile').files[0];
+            const cadastroInput = document.getElementById('cadastroFile').files[0];
+            const relatorioOutput = document.getElementById('relatorioOutput');
+            relatorioOutput.textContent = 'Processando...';
+
+            if (!admissaoInput || !relatorioInput || !cadastroInput) {
+                alert("Por favor, envie as três planilhas.");
+                relatorioOutput.textContent = '';
+                return;
+            }
+
+            try {
+                const [admissaoJson, relatorioJson, cadastroRaw] = await Promise.all([
+                    fileToJson(admissaoInput),
+                    fileToJson(relatorioInput),
+                    fileToJson(cadastroInput, { header: 1 })
+                ]);
+
+                if (!admissaoJson || admissaoJson.length === 0 || !relatorioJson || relatorioJson.length === 0 || !cadastroRaw || cadastroRaw.length === 0) {
+                    alert("Uma ou mais planilhas estão vazias ou com formato inválido.");
+                    relatorioOutput.textContent = 'Falha no processamento.';
+                    return;
+                }
+
+                const admissaoHeaders = Object.keys(admissaoJson[0] || {});
+                const relatorioHeaders = Object.keys(relatorioJson[0] || {});
+                const normalizedAdmissaoHeaders = admissaoHeaders.map(h => h ? normalizarTexto(h) : '');
+                const normalizedRelatorioHeaders = relatorioHeaders.map(h => h ? normalizarTexto(h) : '');
+                
+                let colunaNomeAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+                let colunaCpfAdmissao = admissaoHeaders[normalizedAdmissaoHeaders.findIndex(h => h.includes("cpf"))];
+                let colunaNomeRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("nome") || h.includes("empregado"))];
+                let colunaCpfRelatorio = relatorioHeaders[normalizedRelatorioHeaders.findIndex(h => h.includes("cpf") || h.includes("documento") || h.includes("registro"))];
+
+                const erros = [];
+                if (!colunaNomeAdmissao) erros.push("❌ A planilha 'Documentos não Depositados' não possui uma coluna de nome.");
+                if (!colunaCpfAdmissao) erros.push("❌ A planilha 'Documentos não Depositados' não possui uma coluna de CPF.");
+                if (!colunaNomeRelatorio) erros.push("❌ A planilha 'Relatório de Empregados' não possui uma coluna de nome.");
+                if (!colunaCpfRelatorio) erros.push("❌ A planilha 'Relatório de Empregados' não possui uma coluna de CPF/Documento.");
+
+                if (erros.length > 0) {
+                    alert(erros.join("\n"));
+                    relatorioOutput.textContent = 'Verifique os erros acima e tente novamente.';
+                    return;
+                }
+
+                const mapaCpfCorreto = new Map();
+                for (const linha of relatorioJson) {
+                    const nomeNormalizado = normalizarTexto(linha[colunaNomeRelatorio]);
+                    const cpf = linha[colunaCpfRelatorio]?.toString();
+                    if (nomeNormalizado && cpf && !cpf.includes("*")) {
+                        mapaCpfCorreto.set(nomeNormalizado, cpf);
+                    }
+                }
+
+                let cpfsAtualizados = 0;
+                for (const linha of admissaoJson) {
+                    const nomeNormalizado = normalizarTexto(linha[colunaNomeAdmissao]);
+                    if (mapaCpfCorreto.has(nomeNormalizado)) {
+                        linha[colunaCpfAdmissao] = formatarCPF(mapaCpfCorreto.get(nomeNormalizado));
+                        cpfsAtualizados++;
+                    }
+                }
+                
+                const qlpData = cadastroRaw;
+                const colunaIndiceCadastro = 0;
+                const colunaIndiceAdmissao = 7;
+                const colunaIndiceCpfCadastro = 15;
+                
+                const mapaCadastroAdmissao = new Map();
+                for (const linha of qlpData) {
+                    const cpfNormalizado = linha[colunaIndiceCpfCadastro] ? normalizarCPF(linha[colunaIndiceCpfCadastro]) : '';
+                    const cadastroValue = linha[colunaIndiceCadastro] || '';
+                    const admissaoValue = linha[colunaIndiceAdmissao] || '';
+
+                    if (cpfNormalizado && cadastroValue && admissaoValue) {
+                        mapaCadastroAdmissao.set(cpfNormalizado, {
+                            cadastro: cadastroValue,
+                            admissao: admissaoValue
+                        });
+                    }
+                }
+
+                const nomeColIndexAdmissao = admissaoHeaders.indexOf(colunaNomeAdmissao);
+                const novaPlanilhaFinal = [];
+                const cabecalhoFinal = [...admissaoHeaders];
+                cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Admissão');
+                cabecalhoFinal.splice(nomeColIndexAdmissao, 0, 'Cadastro');
+                novaPlanilhaFinal.push(cabecalhoFinal);
+                
+                for(const linha of admissaoJson) {
+                    const cpfNormalizado = normalizarCPF(linha[colunaCpfAdmissao]);
+                    const dadosExtras = mapaCadastroAdmissao.get(cpfNormalizado) || { cadastro: '', admissao: '' };
+                    
+                    const novaLinha = [...Object.values(linha)];
+                    novaLinha.splice(nomeColIndexAdmissao, 0, excelDateToJSDate(dadosExtras.admissao));
+                    novaLinha.splice(nomeColIndexAdmissao, 0, dadosExtras.cadastro);
+                    novaPlanilhaFinal.push(novaLinha);
+                }
+
+                let mensagem = `✅ Processamento concluído com sucesso!\n\n`;
+                mensagem += `➡️ CPFs atualizados na planilha de admissão: ${cpfsAtualizados}\n`;
+                mensagem += `➡️ Colunas 'Cadastro' e 'Admissão' adicionadas.\n\n`;
+                mensagem += `O download do arquivo 'admissao_corrigida.xlsx' iniciará em breve.`;
+                relatorioOutput.textContent = mensagem;
+
+                const novaPlanilha = XLSX.utils.aoa_to_sheet(novaPlanilhaFinal);
+                const novoWorkbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, 'Corrigido');
+                XLSX.writeFile(novoWorkbook, 'admissao_corrigida.xlsx');
+
+            } catch (error) {
+                console.error("Erro ao processar arquivos:", error);
+                alert("Ocorreu um erro ao ler ou processar uma das planilhas. Verifique se os arquivos são válidos (.xlsx, .csv) e tente novamente.");
+                relatorioOutput.textContent = `Erro: ${error.message}`;
+            }
+        }
+
+        function fileToJson(file, options = {}) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                const extension = file.name.split('.').pop().toLowerCase();
+
+                reader.onload = (e) => {
+                    try {
+                        let workbook;
+                        if (extension === 'csv') {
+                            workbook = XLSX.read(e.target.result, { type: 'string', FS: ';' });
+                        } else {
+                            const data = new Uint8Array(e.target.result);
+                            workbook = XLSX.read(data, { type: 'array' });
+                        }
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(sheet, options);
+                        resolve(json);
+                    } catch (err) {
+                        reject(new Error(`Falha ao processar o arquivo ${file.name}. Formato pode ser inválido.`));
+                    }
+                };
+                reader.onerror = (err) => reject(new Error(`Falha ao ler o arquivo ${file.name}.`));
+                if (extension === 'csv') {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+    </script>
+
+  <!-- Proteção de rota -->
+  <script>try{ TalentosAuthGuard && TalentosAuthGuard.protect(); }catch(e){ console.error(e); }</script>
 </body>
 </html>
