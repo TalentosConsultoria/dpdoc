@@ -60,10 +60,18 @@
           auth.onAuthStateChanged(user => {
             if (!user) {
               window.location.replace(window.location.origin + "/login.html");
+            } else {
+              // Se o usuário está autenticado, remove a classe que esconde o corpo
+              setTimeout(() => {
+                document.documentElement.removeAttribute('data-auth');
+                document.body.style.visibility = 'visible';
+              }, 100);
             }
           });
         } catch (e) {
           console.error("Auth guard init error:", e);
+          document.documentElement.removeAttribute('data-auth');
+          document.body.style.visibility = 'visible';
         }
       };
     </script>
