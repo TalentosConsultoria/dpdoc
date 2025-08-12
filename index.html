@@ -2,99 +2,204 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPDoc — Talentos Consultoria</title>
+
+  <!-- Estilo rápido -->
   <script data-cfasync="false" src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase compat (mantido) -->
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <!-- Seus arquivos já existentes -->
-  <script data-cfasync="false" src="./config.js"></script>
-  <script data-cfasync="false" src="./auth-guard.js"></script>
   <style>
     body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:24px; }
-    .btn{ display:inline-block; padding:10px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:inherit; cursor:pointer; }
-    .btn:hover{ border-color:#3b82f6; }
+    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); border-radius:18px; }
+    .btn{ @apply px-4 py-2 rounded-xl border border-white/20 hover:border-blue-500; background:rgba(255,255,255,.04);}
     .muted{ color:#9aa0aa; }
   </style>
+
+  <!-- Firebase compat (simples e confiável em sites estáticos) -->
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script data-cfasync="false" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+
+  <!-- Seus arquivos -->
+  <script data-cfasync="false" src="./config.js"></script>
+  <script data-cfasync="false" src="./auth-guard.js"></script>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
-  <div class="card w-full max-w-xl">
-    <h1 class="text-3xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
-    <p class="muted mb-4">Faça login com sua conta corporativa @talentosconsultoria.com.br</p>
-    <button id="btnLogin" class="btn">Entrar com Microsoft</button>
-    <p id="status" class="muted mt-3"></p>
+<body class="min-h-screen p-6">
+  <div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- LOGIN -->
+    <section id="viewLogin" class="card p-6">
+      <h1 class="text-2xl font-semibold mb-1">Acesso Talentos Consultoria</h1>
+      <p class="muted mb-4">Faça login com sua conta corporativa <b>@talentosconsultoria.com.br</b></p>
+
+      <button id="btnLogin" class="btn">Entrar com Microsoft</button>
+      <p id="loginStatus" class="muted mt-3"></p>
+    </section>
+
+    <!-- APP (aparece só depois que loga) -->
+    <section id="viewApp" class="card p-6 hidden">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold">Menu Principal</h2>
+          <p class="muted">Você está autenticado como <span id="userEmail" class="font-medium"></span>.</p>
+        </div>
+        <button id="btnLogout" class="btn">Sair</button>
+      </div>
+
+      <hr class="my-4 border-white/10">
+
+      <div class="space-y-3">
+        <h3 class="font-medium">Exemplo: ler do Firestore</h3>
+        <p class="muted">Coleção: <code>samples</code> (mostrará itens se existirem)</p>
+        <ul id="listSamples" class="list-disc pl-6"></ul>
+        <p id="dbStatus" class="muted"></p>
+      </div>
+    </section>
   </div>
 
- <script data-cfasync="false">
+<script data-cfasync="false">
 (function(){
-  const cfg = window.TalentosConfig || {};
-  const statusEl = document.getElementById("status");
-  const setStatus = (t)=>{ if(statusEl) statusEl.textContent = t || ""; };
+  // util
+  const $ = (id)=>document.getElementById(id);
+  const show = (el, vis)=> el.classList.toggle('hidden', !vis);
+  const setText = (el, t)=>{ if(el) el.textContent = t ?? ""; };
 
-  // URL de retorno segura
-  const rawReturn = new URLSearchParams(location.search).get("return");
-  const defaultReturn = cfg.DEFAULT_RETURN || "index.html";
-  const safeReturn = (window.TalentosAuthGuard && TalentosAuthGuard.safeReturnUrl)
-    ? TalentosAuthGuard.safeReturnUrl(rawReturn || defaultReturn)
-    : (rawReturn || defaultReturn);
+  const loginStatus = $("loginStatus");
+  const viewLogin   = $("viewLogin");
+  const viewApp     = $("viewApp");
+  const userEmailEl = $("userEmail");
+  const listSamples = $("listSamples");
+  const dbStatus    = $("dbStatus");
 
-  // Firebase Auth (compat)
-  if (!firebase?.auth) { setStatus("Firebase Auth não carregou."); return; }
+  // 1) Config & init Firebase (sem depender de outro arquivo inicializar)
+  const cfg = (window.TalentosConfig || {});
+  const fbCfg = cfg.firebaseConfig;
+  if (!fbCfg) {
+    setText(loginStatus, "Config Firebase ausente em config.js (TalentosConfig.firebaseConfig).");
+    return;
+  }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(fbCfg);
+  } catch(e) {
+    console.error("[config] init error", e);
+    setText(loginStatus, "Falha ao iniciar Firebase.");
+    return;
+  }
+
   const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  // 2) Persistência local
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
-  // Microsoft provider com TENANT fixo (evita /common)
-  const tenant = cfg.AAD_TENANT_ID || "cba0be9f-94ad-4a26-b291-fa90af7491ee";
+  // 3) Provider Microsoft com TENANT fixo (evita /common e AADSTS50194)
+  const tenant = cfg.AAD_TENANT_ID || "cba0be9f-94ad-4a26-b291-fa90af7491ee"; // coloque seu tenant aqui se quiser centralizar
   const provider = new firebase.auth.OAuthProvider("microsoft.com");
   try {
     provider.setCustomParameters({ tenant, prompt: "select_account" });
-  } catch(_) {}
+  } catch {}
 
+  // 4) Validação de domínio
   function emailDomainAllowed(email){
-    if (window.TalentosAuthGuard?.emailDomainAllowed) return TalentosAuthGuard.emailDomainAllowed(email);
-    const dom = (cfg.ALLOWED_EMAIL_DOMAIN || "talentosconsultoria.com.br").toLowerCase();
-    return typeof email === "string" && email.toLowerCase().endsWith("@"+dom);
-  }
-
-  function handleUser(user){
-    const em = user?.email || "";
-    if (!emailDomainAllowed(em)) {
-      setStatus("Domínio não autorizado: " + em);
-      return auth.signOut();
+    if (window.TalentosAuthGuard?.emailDomainAllowed) {
+      return TalentosAuthGuard.emailDomainAllowed(email);
     }
-    location.replace(safeReturn);
+    const allowed = (cfg.ALLOWED_DOMAINS && cfg.ALLOWED_DOMAINS.length
+                      ? cfg.ALLOWED_DOMAINS
+                      : ["talentosconsultoria.com.br"])
+                      .map(d=>String(d).toLowerCase());
+    const em = String(email || "").toLowerCase();
+    return allowed.some(d => em.endsWith("@"+d));
   }
 
-  // 1) Processa retorno do redirect (se houver)
+  // 5) UI
+  async function loadSamples(){
+    setText(dbStatus, "Carregando dados...");
+    listSamples.innerHTML = "";
+    try{
+      const snap = await db.collection("samples").limit(10).get();
+      if (snap.empty) {
+        setText(dbStatus, "Nenhum item encontrado (coleção 'samples').");
+      } else {
+        snap.forEach(doc=>{
+          const li = document.createElement("li");
+          li.textContent = JSON.stringify(doc.data());
+          listSamples.appendChild(li);
+        });
+        setText(dbStatus, "");
+      }
+    }catch(e){
+      console.error("Firestore error:", e);
+      setText(dbStatus, (e && e.message) ? e.message : "Erro ao ler Firestore.");
+    }
+  }
+
+  function toApp(user){
+    setText(loginStatus, "");
+    setText(userEmailEl, user.email || "");
+    show(viewLogin, false);
+    show(viewApp, true);
+    loadSamples();
+  }
+
+  function toLogin(msg){
+    show(viewApp, false);
+    show(viewLogin, true);
+    if (msg) setText(loginStatus, msg);
+  }
+
+  // 6) Processa retorno do redirect e listener de sessão
   auth.getRedirectResult()
-    .then(res => { if (res && res.user) handleUser(res.user); })
-    .catch(err => {
+    .then(res=>{
+      if (res?.user) {
+        if (!emailDomainAllowed(res.user.email)) {
+          auth.signOut();
+          return toLogin("Conta fora do domínio permitido.");
+        }
+        return toApp(res.user);
+      }
+    })
+    .catch(err=>{
       console.error("getRedirectResult:", err);
-      const msg = (err && err.message) || "";
-      if (msg.includes("AADSTS50194")) setStatus("Falha de tenant (/common). Tente novamente.");
+      if (String(err?.message).includes("AADSTS50194")) {
+        setText(loginStatus, "Falha de tenant (/common). Tente novamente.");
+      }
     });
 
-  // 2) Se já logado, segue
-  auth.onAuthStateChanged(u => { if (u) handleUser(u); });
+  auth.onAuthStateChanged(u=>{
+    if (u) {
+      if (!emailDomainAllowed(u.email)) {
+        auth.signOut();
+        return toLogin("Conta fora do domínio permitido.");
+      }
+      toApp(u);
+    } else {
+      toLogin();
+    }
+  });
 
-  // 3) Clique → popup; se bloquear, fallback para redirect
-  document.getElementById("btnLogin")?.addEventListener("click", async ()=>{
-    setStatus("Abrindo autenticador…");
+  // 7) Ações
+  $("btnLogin")?.addEventListener("click", async ()=>{
+    setText(loginStatus, "Abrindo autenticador…");
     try {
       const res = await auth.signInWithPopup(provider);
-      if (res?.user) handleUser(res.user);
+      if (res?.user) return toApp(res.user);
     } catch (e) {
+      // alguns navegadores bloqueiam popup => fallback redirect
       try {
         await auth.signInWithRedirect(provider);
-        setStatus("Redirecionando para Microsoft…");
+        setText(loginStatus, "Redirecionando para Microsoft…");
       } catch (e2) {
         console.error("signInWithRedirect:", e2);
-        setStatus((e2 && (e2.code + " – " + e2.message)) || "Falha ao iniciar login.");
+        setText(loginStatus, (e2?.code ? e2.code+" – " : "") + (e2?.message || "Falha ao iniciar login."));
       }
     }
   });
+
+  $("btnLogout")?.addEventListener("click", async ()=>{
+    await auth.signOut();
+    toLogin("Você saiu.");
+  });
 })();
 </script>
-
+</body>
+</html>
