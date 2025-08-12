@@ -22,6 +22,8 @@
     .btn{ background:#111827; border:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; border-radius:.75rem; }
     .btn:hover{ background:#1f2937; }
     .muted{ color:#9ca3af; font-size:.875rem; }
+    .err{ color:#fecaca; }
+    a.link{ color:#93c5fd; }
   </style>
 
   <script>
@@ -64,75 +66,130 @@
         return u.pathname + u.search + u.hash;
       } catch { return fallback; }
     }
-
-    // --- Autenticação ---
-    async function doLogin(){
-      try {
-        const auth = firebase.auth();
-        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-        // Provedor Microsoft (ajuste aqui se usar outro provedor)
-        const provider = new firebase.auth.OAuthProvider('microsoft.com');
-
-        try {
-          await auth.signInWithPopup(provider);
-        } catch (e) {
-          console.warn("[login] popup falhou, usando redirect", e);
-          await auth.signInWithRedirect(provider);
-          return; // fluxo continuará via redirect result
-        }
-      } catch (e) {
-        console.error("[login] erro ao iniciar login", e);
-        const s = document.getElementById("status");
-        if (s) s.textContent = "Falha ao iniciar login. Tente novamente.";
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const status = document.getElementById("status");
-      const auth = firebase.auth();
-      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-      auth.onAuthStateChanged(async (user) => {
-        try{
-          if (!user) {
-            // Sem sessão: dispara login automático, mantém botão como fallback
-            status.textContent = "Redirecionando para o provedor...";
-            doLogin();
-            return;
-          }
-          // Filtro de domínio
-          const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
-          const domain = String(user.email||"").split("@")[1]||"";
-          if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
-            status.textContent = "Domínio não permitido. Realizando logout...";
-            try { await auth.signOut(); } catch(e){}
-            location.replace("login.html?error=forbidden");
-            return;
-          }
-          // Sessão ok → redireciona para retorno seguro
-          const raw = new URLSearchParams(location.search).get("return");
-          const ret = safeReturn(raw);
-          status.textContent = "Autenticado. Abrindo " + ret + "...";
-          location.replace(ret);
-        }catch(e){
-          console.error(e);
-          status.textContent = "Erro inesperado na autenticação.";
-        }
-      });
-
-      // Botão fallback
-      const btn = document.getElementById("btnLogin");
-      btn?.addEventListener("click", doLogin);
-    });
   </script>
 </head>
 <body class="min-h-screen grid place-items-center">
   <div class="card rounded-2xl p-6 w-full max-w-md">
     <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
     <p id="status" class="muted mb-4">Aguardando autenticação...</p>
-    <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
-    <p class="muted mt-4">O login iniciará automaticamente. Se o navegador bloquear o popup, use o botão acima.</p>
+    <div class="grid gap-2">
+      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
+      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
+    </div>
+    <p class="muted mt-3">
+      Dica: se travar em loop, acesse <code class="select-all">/login.html?noauto=1</code> ou use o botão acima.
+    </p>
+    <p id="err" class="muted err mt-2"></p>
   </div>
+
+  <script>
+    (function(){
+      const params = new URLSearchParams(location.search);
+      const rawReturn = params.get("return");
+      const noautoParam = params.get("noauto")==="1";
+      const hasError = params.has("error");
+      const LS_NOAUTO = "talentos_noauto";
+      const SS_ATT = "talentos_login_attempted";
+
+      // Define modos
+      const noAuto = noautoParam || hasError || localStorage.getItem(LS_NOAUTO)==="1";
+      const attempted = sessionStorage.getItem(SS_ATT)==="1";
+
+      const status = document.getElementById("status");
+      const errEl = document.getElementById("err");
+      const btnLogin = document.getElementById("btnLogin");
+      const btnLogout = document.getElementById("btnLogout");
+
+      function setErr(msg){ if(errEl) errEl.textContent = msg || ""; }
+      function setStatus(msg){ if(status) status.textContent = msg || ""; }
+      function markAttempted(){ sessionStorage.setItem(SS_ATT,"1"); }
+
+      async function doLogin(){
+        try {
+          const auth = firebase.auth();
+          await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+          const provider = new firebase.auth.OAuthProvider('microsoft.com');
+          try {
+            setStatus("Abrindo provedor...");
+            markAttempted();
+            await auth.signInWithPopup(provider);
+          } catch (e) {
+            console.warn("[login] popup falhou, usando redirect", e);
+            setStatus("Redirecionando para o provedor...");
+            markAttempted();
+            await auth.signInWithRedirect(provider);
+          }
+        } catch (e) {
+          console.error("[login] erro ao iniciar login", e);
+          setErr("Falha ao iniciar login. Clique no botão novamente.");
+        }
+      }
+
+      async function doLogout(){
+        try{
+          const auth = firebase.auth();
+          await auth.signOut();
+          localStorage.setItem(LS_NOAUTO, "1"); // evita autologin após sair
+          sessionStorage.removeItem(SS_ATT);
+          setStatus("Sessão encerrada. Faça login novamente quando desejar.");
+        }catch(e){ console.warn(e); }
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const auth = firebase.auth();
+        try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch {}
+
+        // Trata redirect result ANTES de autologin
+        try {
+          const result = await auth.getRedirectResult();
+          if (result && result.user) {
+            console.log("[login] redirect result user ok");
+          }
+        } catch (e) {
+          console.warn("[login] getRedirectResult", e);
+          setErr("Erro ao retornar do provedor. Tente o botão acima.");
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+          try{
+            if (!user) {
+              if (!noAuto && !attempted) {
+                setStatus("Redirecionando para o provedor...");
+                doLogin();
+              } else {
+                setStatus("Clique em 'Entrar com Microsoft' para continuar.");
+              }
+              return;
+            }
+            // Filtro de domínio
+            const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
+            const domain = String(user.email||"").split("@")[1]||"";
+            if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
+              setStatus("Domínio não permitido. Logout...");
+              try { await auth.signOut(); } catch(e){}
+              localStorage.setItem(LS_NOAUTO, "1");
+              location.replace("login.html?error=forbidden");
+              return;
+            }
+            // Sessão ok → redireciona para retorno seguro
+            const ret = safeReturn(rawReturn);
+            setStatus("Autenticado. Abrindo " + ret + "...");
+            location.replace(ret);
+          }catch(e){
+            console.error(e);
+            setErr("Erro inesperado na autenticação.");
+            setStatus("");
+          }
+        });
+
+        btnLogin?.addEventListener("click", () => {
+          localStorage.removeItem(LS_NOAUTO); // reabilita autologin
+          sessionStorage.setItem(SS_ATT,"1");
+          doLogin();
+        });
+        btnLogout?.addEventListener("click", doLogout);
+      });
+    })();
+  </script>
 </body>
 </html>

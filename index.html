@@ -23,6 +23,7 @@
     .btn:hover{ background:#1f2937; }
     .muted{ color:#9ca3af; font-size:.875rem; }
     .err{ color:#fecaca; }
+    a.link{ color:#93c5fd; }
   </style>
 
   <script>
@@ -71,8 +72,13 @@
   <div class="card rounded-2xl p-6 w-full max-w-md">
     <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
     <p id="status" class="muted mb-4">Aguardando autenticação...</p>
-    <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
-    <p class="muted mt-4">O login iniciará automaticamente uma única vez. Se o navegador bloquear o popup, use o botão acima.</p>
+    <div class="grid gap-2">
+      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
+      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
+    </div>
+    <p class="muted mt-3">
+      Dica: se travar em loop, acesse <code class="select-all">/login.html?noauto=1</code> ou use o botão acima.
+    </p>
     <p id="err" class="muted err mt-2"></p>
   </div>
 
@@ -80,16 +86,23 @@
     (function(){
       const params = new URLSearchParams(location.search);
       const rawReturn = params.get("return");
+      const noautoParam = params.get("noauto")==="1";
       const hasError = params.has("error");
-      const forbidAuto = hasError || sessionStorage.getItem("talentos_forbid_autologin")==="1";
-      const attempted = sessionStorage.getItem("talentos_login_attempted")==="1";
+      const LS_NOAUTO = "talentos_noauto";
+      const SS_ATT = "talentos_login_attempted";
+
+      // Define modos
+      const noAuto = noautoParam || hasError || localStorage.getItem(LS_NOAUTO)==="1";
+      const attempted = sessionStorage.getItem(SS_ATT)==="1";
 
       const status = document.getElementById("status");
       const errEl = document.getElementById("err");
-      const btn = document.getElementById("btnLogin");
+      const btnLogin = document.getElementById("btnLogin");
+      const btnLogout = document.getElementById("btnLogout");
 
       function setErr(msg){ if(errEl) errEl.textContent = msg || ""; }
       function setStatus(msg){ if(status) status.textContent = msg || ""; }
+      function markAttempted(){ sessionStorage.setItem(SS_ATT,"1"); }
 
       async function doLogin(){
         try {
@@ -98,10 +111,12 @@
           const provider = new firebase.auth.OAuthProvider('microsoft.com');
           try {
             setStatus("Abrindo provedor...");
+            markAttempted();
             await auth.signInWithPopup(provider);
           } catch (e) {
             console.warn("[login] popup falhou, usando redirect", e);
             setStatus("Redirecionando para o provedor...");
+            markAttempted();
             await auth.signInWithRedirect(provider);
           }
         } catch (e) {
@@ -110,15 +125,24 @@
         }
       }
 
+      async function doLogout(){
+        try{
+          const auth = firebase.auth();
+          await auth.signOut();
+          localStorage.setItem(LS_NOAUTO, "1"); // evita autologin após sair
+          sessionStorage.removeItem(SS_ATT);
+          setStatus("Sessão encerrada. Faça login novamente quando desejar.");
+        }catch(e){ console.warn(e); }
+      }
+
       document.addEventListener("DOMContentLoaded", async () => {
         const auth = firebase.auth();
         try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch {}
 
-        // 1) Trata resultado de redirect ANTES de acionar autologin
+        // Trata redirect result ANTES de autologin
         try {
           const result = await auth.getRedirectResult();
           if (result && result.user) {
-            // Usuário já retornou do provedor
             console.log("[login] redirect result user ok");
           }
         } catch (e) {
@@ -126,13 +150,10 @@
           setErr("Erro ao retornar do provedor. Tente o botão acima.");
         }
 
-        // 2) Observa estado
         auth.onAuthStateChanged(async (user) => {
           try{
             if (!user) {
-              // Só auto-login se não houver erro e se ainda não tentamos nesta aba
-              if (!forbidAuto && !attempted) {
-                sessionStorage.setItem("talentos_login_attempted","1");
+              if (!noAuto && !attempted) {
                 setStatus("Redirecionando para o provedor...");
                 doLogin();
               } else {
@@ -145,8 +166,8 @@
             const domain = String(user.email||"").split("@")[1]||"";
             if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
               setStatus("Domínio não permitido. Logout...");
-              sessionStorage.setItem("talentos_forbid_autologin","1");
               try { await auth.signOut(); } catch(e){}
+              localStorage.setItem(LS_NOAUTO, "1");
               location.replace("login.html?error=forbidden");
               return;
             }
@@ -161,12 +182,12 @@
           }
         });
 
-        // 3) Botão fallback
-        btn?.addEventListener("click", () => {
-          sessionStorage.removeItem("talentos_forbid_autologin");
-          sessionStorage.setItem("talentos_login_attempted","1");
+        btnLogin?.addEventListener("click", () => {
+          localStorage.removeItem(LS_NOAUTO); // reabilita autologin
+          sessionStorage.setItem(SS_ATT,"1");
           doLogin();
         });
+        btnLogout?.addEventListener("click", doLogout);
       });
     })();
   </script>
