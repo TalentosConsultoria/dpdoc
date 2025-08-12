@@ -1,5 +1,7 @@
-// auth-guard.js (v5) — anti-loop + envia noauto=1 em forbidden
+\
+// auth-guard.js (v6) — anti-loop definitivo com 'access-denied.html'
 (function(){
+  // Auto-init Firebase app se compat presente
   try {
     if (typeof firebase !== 'undefined' && firebase.initializeApp) {
       if (!firebase.apps || firebase.apps.length === 0) {
@@ -12,6 +14,9 @@
 
 (function (global) {
   "use strict";
+
+  var DEBUG = /[?&]debug=1/i.test(location.search) || /#debug\b/.test(location.hash);
+  function dlog(){ if (DEBUG) try{ console.log.apply(console, arguments); }catch{} }
 
   function isLoginPath(pathname) { return /(^|\/)login(\.html)?$/i.test(pathname || ""); }
   function sameOrigin(url) { try { var u = new URL(url, location.href); return u.origin === location.origin; } catch { return false; } }
@@ -30,14 +35,29 @@
       return u.pathname + u.search + u.hash;
     } catch { return fallback; }
   }
+
+  // throttle para evitar redirecionar em sequência
+  function canRedirectNow() {
+    try {
+      var k = "talentos_guard_last_redirect";
+      var last = parseInt(sessionStorage.getItem(k) || "0", 10);
+      var now = Date.now();
+      if (now - last < 2500) return false;
+      sessionStorage.setItem(k, String(now));
+      return true;
+    } catch { return true; }
+  }
+
   function emailDomainAllowed(email) {
     try {
       var domains = (global.TalentosConfig && (TalentosConfig.ALLOWED_DOMAINS || TalentosConfig.allowedDomains)) || [];
       var at = (email || "").split("@");
       var domain = at.length > 1 ? at[1].toLowerCase() : "";
-      return domains.length === 0 ? true : domains.some(function (d) { return domain === String(d).toLowerCase(); });
+      if (domains.length === 0) return true;
+      return domains.some(function (d) { return domain === String(d).toLowerCase(); });
     } catch (e) { return false; }
   }
+
   function waitAuthReady(timeoutMs){
     timeoutMs = timeoutMs || 5000;
     return new Promise(function (resolve) {
@@ -58,47 +78,43 @@
       }
     });
   }
-  function canRedirectNow() {
-    try {
-      var key = "talentos_guard_last_redirect";
-      var last = parseInt(sessionStorage.getItem(key) || "0", 10);
-      var now = Date.now();
-      if (now - last < 2500) return false;
-      sessionStorage.setItem(key, String(now));
-      return true;
-    } catch { return true; }
-  }
 
   async function protect(opts) {
-    // Bypass total via URL/flag
+    // BYPASS (debug/emergência)
     var bypass = /[?&]noauth=1/i.test(location.search) || (function(){ try{ return localStorage.getItem("talentos_noauth_site")==="1"; } catch(e){ return false; } })();
-    if (bypass) { return; }
+    if (bypass) { dlog("[guard] BYPASS noauth"); return; }
 
-    // Nunca proteja o login.html
-    if (isLoginPath(location.pathname)) { return; }
+    // Nunca proteja login.html
+    if (isLoginPath(location.pathname)) { dlog("[guard] not protecting login"); return; }
 
     var cfg = Object.assign({
-      loginPage: (global.TalentosConfig && TalentosConfig.LOGIN_PAGE) || "login.html"
+      loginPage: (global.TalentosConfig && TalentosConfig.LOGIN_PAGE) || "login.html",
+      deniedPage: "access-denied.html"
     }, opts || {});
 
     var params = new URLSearchParams(location.search);
     var requested = params.get("return");
-    var currentSafe = location.pathname + location.hash;
-    var ret = safeReturnUrl(requested || currentSafe);
+    var ret = safeReturnUrl(requested || (location.pathname + location.hash));
 
-    var user = await waitAuthReady(5000);
+    var user = await waitAuthReady(6000);
     var auth = firebase.auth();
 
     if (!user) {
       if (!canRedirectNow()) return;
       var goto = cfg.loginPage + (ret ? ("?return=" + encodeURIComponent(ret)) : "");
+      dlog("[guard] -> login", goto);
       location.replace(goto);
       return;
     }
+
+    // Se o domínio não for permitido, não redireciona para login (evita loop). Vai para denied fixo.
     if (!emailDomainAllowed(user.email)) {
       try { await auth.signOut(); } catch(e) {}
+      try { localStorage.setItem("talentos_noauto","1"); } catch(e){}
       if (!canRedirectNow()) return;
-      location.replace(cfg.loginPage + "?error=forbidden&noauto=1");
+      var deniedUrl = cfg.deniedPage + "?reason=forbidden";
+      dlog("[guard] -> denied", deniedUrl);
+      location.replace(deniedUrl);
       return;
     }
 
@@ -106,6 +122,7 @@
     global.TalentosAuthGuard = global.TalentosAuthGuard || {};
     global.TalentosAuthGuard.currentUser = { uid: user.uid, email: user.email, displayName: user.displayName || null };
     global.TalentosAuthGuard.safeReturnUrl = safeReturnUrl;
+    dlog("[guard] ok", user.email);
   }
 
   global.TalentosAuthGuard = Object.assign(global.TalentosAuthGuard || {}, { protect: protect, safeReturnUrl: safeReturnUrl });

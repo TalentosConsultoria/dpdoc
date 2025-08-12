@@ -5,14 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - Talentos Consultoria</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-
-  <!-- Config -->
   <script src="./config.js?v=20250812"></script>
 
   <style>
@@ -26,7 +21,7 @@
   </style>
 
   <script>
-    // Sanitiza 'return'
+    // Sanitiza 'return' para evitar recursão
     (function () {
       "use strict";
       try {
@@ -118,7 +113,6 @@
             await auth.signInWithRedirect(provider);
           }
         } catch (e) {
-          console.error(e);
           setErr("Falha ao iniciar login. Tente novamente.");
         }
       }
@@ -136,7 +130,7 @@
         const auth = firebase.auth();
         try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch{}
 
-        // Processa redirect antes
+        // Processa resultado do redirect antes
         try { await auth.getRedirectResult(); } catch(e){}
 
         auth.onAuthStateChanged(async (user) => {
@@ -146,7 +140,7 @@
               else {
                 setStatus("Clique em 'Entrar com Microsoft' para continuar.");
                 if (hasError) setErr("Acesso negado para este domínio. Use sua conta corporativa.");
-                setHint("Dica: se ver looping, este login não dispara automaticamente. Use o botão.");
+                setHint("Se viu looping antes, este login não dispara automaticamente.");
               }
               return;
             }
@@ -157,7 +151,7 @@
               setStatus("Domínio não permitido. Saindo...");
               try { await auth.signOut(); } catch(e){}
               localStorage.setItem("talentos_noauto","1");
-              location.replace("login.html?error=forbidden&noauto=1");
+              location.replace("access-denied.html");
               return;
             }
             // ok
@@ -166,7 +160,6 @@
             localStorage.removeItem("talentos_noauto");
             location.replace(ret);
           }catch(e){
-            console.error(e);
             setErr("Erro inesperado na autenticação.");
           }
         });

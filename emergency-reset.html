@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset DPDoc</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script>
+    (async function(){
+      try{ localStorage.setItem("talentos_noauto","1"); }catch(e){}
+      try{ sessionStorage.clear(); }catch(e){}
+      try{ if (window.firebase?.auth) await firebase.auth().signOut(); }catch(e){}
+      location.replace("login.html?noauto=1");
+    })();
+  </script>
+</head>
+<body>Resetando sessão...</body>
+</html>
