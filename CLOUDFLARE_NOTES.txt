@@ -1,8 +1,0 @@
-Recomendações Cloudflare para evitar loops/erros de MSAL:
-- Page Rule para https://dpdoc.talentosconsultoria.com.br/login.html*
-  * Cache Level: Bypass
-  * Rocket Loader: Off
-  * Auto Minify: Off (JS/HTML/CSS)
-- Transform Rule (HTTP Response Header) opcional:
-  * Content-Type: application/javascript para *.js
-- Sempre limpar o cache após publicar alterações em login.html e assets/js/*.js

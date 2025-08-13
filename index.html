@@ -1,141 +1,111 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="scroll-smooth">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DPDoc • Talentos Consultoria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Principal - Talentos Consultoria</title>
 
-  <!-- Tailwind (layout) -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase compat -->
-  
-  
-  
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#004aad',
+                        secondary: '#196dff',
+                        background: '#f1f5f9',
+                        card: '#ffffff',
+                    }
+                }
+            }
+        }
+    </script>
 
-  <!-- Config + Guard -->
-  <script>
-  window.TalentosConfig = {
-    firebase: {
-      apiKey: "AIzaSyDgm9XVyk3myuMdpU7lGHm6z5gRyOKmiyw",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "688471762561",
-      appId: "1:688471762561:web:119a3758d63a8df7126a4b"
-    }
-  };
-  </script>
-  <script src="./config.js" defer></script>
-  <script src="./auth-guard.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
 
-  <style>
-    body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); }
-    .btn{ padding:.5rem .875rem; border:1px solid rgba(255,255,255,.15); border-radius:.75rem; }
-    iframe { background:#111827; }
-  </style>
+    <script>
+        // Configuração do MSAL (Microsoft Authentication Library)
+        const msalConfig = {
+            auth: {
+                clientId: "SEU_CLIENT_ID", // Substitua com seu Client ID do Azure AD
+                authority: "https://login.microsoftonline.com/SEU_TENANT_ID", // Substitua com seu Tenant ID
+                redirectUri: "http://localhost/index.html", // A URL que o usuário será redirecionado após login
+            },
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Função para verificar se o usuário está autenticado
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                // O usuário já está autenticado
+                console.log("Usuário autenticado", token);
+                // Acesso a área restrita ou redirecionamento
+            } else {
+                // O usuário não está autenticado, redireciona para a página de login
+                window.location.href = "login.html";
+            }
+        }
+
+        // Verifique a autenticação ao carregar a página
+        window.onload = function () {
+            checkAuth();
+        };
+    </script>
 </head>
-<body class="min-h-screen p-6">
-  <header class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">DPDoc</h1>
-    <div class="flex items-center gap-3">
-      <span class="text-sm opacity-80" data-user-email></span>
-      <button id="logout" class="btn">Sair</button>
-    </div>
-  </header>
 
-  <main class="grid gap-6 grid-cols-1 lg:grid-cols-2">
-    <section class="card rounded-2xl p-5">
-      <h2 class="text-lg font-semibold mb-3">Abrir Documento</h2>
-      <div class="grid gap-3">
-        <input id="path" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10" placeholder="Ex.: docs/meu-arquivo.pdf (Firebase Storage) ou URL https://..." />
-        <div class="flex gap-3">
-          <button id="open-storage" class="btn">Abrir do Storage</button>
-          <button id="open-url" class="btn">Abrir por URL</button>
+<body class="bg-background flex flex-col min-h-screen font-sans">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo da Talentos Consultoria" class="h-10 rounded-full shadow-md">
+                <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
+            </a>
+            <nav class="flex items-center gap-6">
+                <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
+                    <span>Ferramentas DP</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
+                    <a href="qlp-format.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">QLP</a>
+                    <a href="pdf-tool.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">PDF</a>
+                    <a href="format-bancodoc.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bdoc</a>
+                </div>
+            </nav>
         </div>
-        <p class="text-xs opacity-70">
-          Observação: arquivos <code>.bdoc</code> não abrem no navegador. O download será iniciado automaticamente.
-        </p>
-      </div>
-    </section>
+    </header>
 
-    <section class="card rounded-2xl p-5">
-      <h2 class="text-lg font-semibold mb-3">Visualizador</h2>
-      <div class="rounded-xl overflow-hidden border border-white/10">
-        <iframe id="viewer" class="w-full" style="height:60vh;" title="Visualizador de documentos"></iframe>
-      </div>
-    </section>
-  </main>
+    <main class="flex-grow flex justify-center items-center p-4">
+        <div class="bg-card p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Bem-vindo(a) à sua Central de Ferramentas</h1>
+            <p class="text-md md:text-lg text-gray-600">
+                Utilize o menu no canto superior direito para acessar as ferramentas que você precisa.
+            </p>
+        </div>
+    </main>
 
-  <script>
-  // Logout
-  document.getElementById('logout').addEventListener('click', ()=>{
-    microsoftAuth().signOut().catch(console.error);
-  });
+    <footer class="bg-gray-800 text-white text-center p-6">
+        <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
+            <p class="text-gray-400 text-sm">&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
+            <div class="flex items-center gap-6">
+                <a href="https://talentosconsultoria.com.br/" target="_blank" rel="noopener noreferrer" title="Nosso Site" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
+                </a>
+            </div>
+        </div>
+    </footer>
 
-  function isPdf(url){ return /\.pdf(\?|#|$)/i.test(url); }
-  function isBdoc(url){ return /\.bdoc(\?|#|$)/i.test(url); }
-
-  function openInViewer(url){
-    const iframe = document.getElementById('viewer');
-    if (isBdoc(url)){
-      // BDOC não é renderizável: força download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      alert("Arquivo .bdoc baixado. Não pode ser visualizado no navegador.");
-      return;
-    }
-    if (isPdf(url)){
-      iframe.src = url; // Espera Content-Type application/pdf
-    } else {
-      // Tenta abrir mesmo assim (alguns navegadores mostrarão download)
-      iframe.src = url;
-    }
-  }
-
-  document.getElementById('open-url').addEventListener('click', ()=>{
-    const v = document.getElementById('path').value.trim();
-    if (!v) return;
-    openInViewer(v);
-  });
-
-  document.getElementById('open-storage').addEventListener('click', ()=>{
-    const v = document.getElementById('path').value.trim();
-    if (!v) return;
-    try{
-      const ref = firebase.storage().ref(v);
-      ref.getDownloadURL().then(openInViewer).catch((e)=>{
-        alert("Erro ao obter URL do Storage: " + e.message);
-        console.error(e);
-      });
-    } catch(e){
-      alert("Storage não inicializado: " + e.message);
-      console.error(e);
-    }
-  });
-  </script>
-
-<script src="https://js.microsoft.com/v1/1/azure/identity.js"></script>
-<script>
-  async function microsoftLogin() {
-    const provider = new firebase.auth.OAuthProvider('microsoft.com');
-    provider.setCustomParameters({
-      prompt: 'select_account',
-      domain_hint: 'talentosconsultoria.com.br'
-    });
-    try {
-      await firebase.auth().signInWithPopup(provider);
-      window.location.href = 'index.html'; // Redirect after login
-    } catch (error) {
-      console.error("Microsoft login error: ", error);
-      alert("Login failed. Please try again.");
-    }
-  }
-</script>
 </body>
 </html>

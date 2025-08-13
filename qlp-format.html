@@ -31,42 +31,6 @@
     <link rel="stylesheet" href="style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-    <!-- Firebase compat 10.12.4 (app, auth e firestore) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-
-    <!-- Script de configuração e autenticação -->
-    <script>
-      // ======== CONFIG APP (copiado do config.js) ========
-      const firebaseConfig = {
-        apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-        authDomain: "talentosbd-e4206.firebaseapp.com",
-        projectId: "talentosbd-e4206",
-        storageBucket: "talentosbd-e4206.firebasestorage.app",
-        messagingSenderId: "580727253031",
-        appId: "1:580727253031:web:5368302ef0da6277788602",
-        measurementId: "G-S464LNX2J9"
-      };
-
-      // ======== AUTH GUARD ========
-      window.onload = () => {
-        try {
-          if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-          }
-          const auth = firebase.auth();
-          auth.onAuthStateChanged(user => {
-            if (!user) {
-              window.location.replace(window.location.origin + "/login.html");
-            }
-          });
-        } catch (e) {
-          console.error("Auth guard init error:", e);
-        }
-      };
-    </script>
 </head>
 
 <body class="bg-background flex flex-col min-h-screen font-sans">
@@ -79,7 +43,7 @@
             </a>
             <nav class="relative">
                 <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
-                    <span>Ferramentas</span>
+                    <span>Ferramentas DP</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -122,25 +86,38 @@
         </div>
     </div>
     
-    <footer class="bg-gray-800 text-white text-center p-4">
-        <p>&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
+    <footer class="bg-gray-800 text-white text-center p-6">
+        <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
+            <p class="text-gray-400 text-sm">&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
+            
+            <!-- Seção de Contato com Ícones -->
+            <div class="flex items-center gap-6">
+                <a href="https://talentosconsultoria.com.br/" target="_blank" rel="noopener noreferrer" title="Nosso Site" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
+                </a>
+                <a href="https://www.instagram.com/talentosconsultoria/" target="_blank" rel="noopener noreferrer" title="Nosso Instagram" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.28.058 1.688.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.689-.073-4.948-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+                </a>
+                <a href="https://www.linkedin.com/company/talentos-consultoria/" target="_blank" rel="noopener noreferrer" title="Nosso LinkedIn" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+                </a>
+            </div>
+        </div>
     </footer>
 
     <script>
         // Script para o dropdown do cabeçalho
         const dropdownButton = document.getElementById('tools-dropdown-button');
         const dropdownMenu = document.getElementById('tools-dropdown-menu');
-        if (dropdownButton && dropdownMenu) {
-            dropdownButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                dropdownMenu.classList.toggle('hidden');
-            });
-            window.addEventListener('click', () => {
-                if (!dropdownMenu.classList.contains('hidden')) {
-                    dropdownMenu.classList.add('hidden');
-                }
-            });
-        }
+        dropdownButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+        window.addEventListener('click', () => {
+            if (!dropdownMenu.classList.contains('hidden')) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
 
         // Funcionalidade da ferramenta QLP
         let rawData;
@@ -303,7 +280,7 @@
                     }
                     
                     if (columnIndex === filialOriginalIndex) {
-                        const filialMap = {1:"TALENTOS - CLT",2:"TALENTOS - TEMPORARIO",3:"AMBEV CACHOEIRAS DE MACACU - CLT",4:"AMBEV CACHOEIRAS DE MACACU - TEMPORARIO",5:"AMBEV NOVA RIO - CLT",6:"AMBEV NOVA RIO - TEMPORARIO",7:"ARM ARMAZENS - CLT",8:"ARM ARMAZENS - TEMPORARIO",9:"BUNGE ALIMENTOS - CLT",10:"BUNGE ALIMENTOS - TEMPORARIO",11:"CARTA GOIAS - CLT",12:"CARTA GOIAS - TEMPORARIO",13:"GUANABARA T DE CASTRO - CLT",14:"GUANABARA T DE CASTRO - TEMPORARIO",15:"GUANABARA AGUA BRANCA - CLT",16:"GUANABARA AGUA BRANCA - TEMPORARIO",17:"CERVEJARIA BOHEMIA - CLT",18:"CERVEJARIA BOHEMIA - TEMPORARIO",19:"CLUB MED - CLT",20:"CLUB MED - TEMPORARIO",21:"CEPE/RIO - CLT",22:"CEPE/RIO - TEMPORARIO",23:"CORRFA - CLT",24:"CORRFA - TEMPORARIO",25:"CONSORCIO PIPE - CLT",26:"CONSORCIO PIPE - TEMPORARIO",27:"HALLIDAY GUIMARAES - CLT",28:"HALLIDAY GUIMARAES - TEMPORARIO",29:"CONTRUTORA NORBERTO ODEBRECHT - CLT",30:"CONTRUTORA NORBERTO ODEBRECHT - TEMPORARIO",31:"CRBS CDD JPA - CLT",32:"CRBS CDD JPA - TEMPORARIO",33:"CRBS CDD PAVUNA - CLT",34:"CRBS CDD PAVUNA - TEMPORARIO",35:"CRBS CDD SC - CLT",36:"CRBS CDD SC - TEMPORARIO",37:"CERVEJARIA JAGUARIUNA - CLT",38:"CERVEJARIA JAGUARIUNA - TEMPORARIO",39:"CERVEJARIA AGUAS CLARAS - CLT",40:"CERVEJARIA AGUAS CLARAS - TEMPORARIO",41:"CERVEJARIA LEYENDA - CLT",42:"CERVEJARIA LEYENDA - TEMPORARIO",43:"CERVEJARIA SAO LUIS - CLT",44:"CERVEJARIA SAO LUIS - TEMPORARIO",45:"CERVEJARIA SAO LUIS FABRICA - CLT",46:"CERVEJARIA SAO LUIS FABRICA - TEMPORARIO",47:"CONSTRUTORA QUEIROZ GALVAO - CLT",48:"CONSTRUTORA QUEIROZ GALVAO - TEMPORARIO",49:"CONSTRUTORA QUEIROZ GALVAO - GO",50:"CONSTRUTORA QUEIROZ GALVAO - GO",51:"CONSTRUTORA QUEIROZ GALVAO - SP",52:"VIGODENT INDUSTRIA - CLT",53:"VIGODENT INDUSTRIA - TEMPORARIO",54:"VIATRIS DISTRIBUIDORA - CLT",55:"VIATRIS DISTRIBUIDORA - TEMPORARIO",56:"CONSORCIO PIPE - CLT",57:"CONSORCIO PIPE - TEMPORARIO",58:"BRF - CLT",59:"VIATRIS CAMPOS",60:"VIATRIS CAMPOS - TEMPORARIO",61:"MYLAN/VIATRIS CAMPINAS - CLT",62:"MYLAN/VIATRIS CAMPINAS - TEMPORARIO",63:"PROJETO VILA LEOPOLDINA - CLT",64:"PROJETO VILA LEOPOLDINA - TEMPORARIO",65:"PROJETO VOLTA REDONDA - CLT",66:"PROJETO VOLTA REDONDA - TEMPORARIO",67:"PROJETO MINAS GERAIS - CLT",68:"PROJETO MINAS GERAIS - TEMPORARIO",69:"CRBS CDD VOLTA REDONDA - CLT",70:"CRBS CDD VOLTA REDONDA - TEMPORARIO",71:"CRBS CDD NOVA IGUAÇU - CLT",72:"CRBS CDD NOVA IGUAÇU - TEMPORARIO",73:"CRBS CDD VOLTA REDONDA - CLT",74:"CRBS CDD VOLTA REDONDA - TEMPORARIO",75:"ALYA - CLT",76:"ALYA - TEMPORARIO",77:"PROJETO JPA ARQUIVO CLT",78:"PROJETO JPA ARQUIVO TEMP",79:"EXTERRAN - CLT",80:"EXTERRAN - TEMPORARIO",81:"MYLAN DISTRIBUIDORA DE MEDICAMENTOS - CLT",82:"MYLAN DISTRIBUIDora DE MEDICAMENTOS - TEMPORARIO",83:"AMBEV JAGUARIUNA - CLT",84:"AMBEV JAGUARIUNA - TEMPORARIO",85:"BELA VISTA INCORPORADORA - CLT",86:"BELA VISTA INCORPORADORA - TEMPORARIO",87:"KONGSBERG MARITIME CM BRASIL LTDA. - CLT",88:"KONGSBERG MARITIME CM BRASIL LTDA - TEMPORARIO",89:"CNO S/A - CLT",90:"CNO S/A - TEMPORARIO",91:"BLU (ENOPP) - CLT",92:"BLU (ENOPP) - TEMPORARIO",93:"MYLAN BRASIL DISTRIBUIDORA - CLT",94:"MYLAN BRASIL DISTRIBUIDORA - TEMPORARIO",95:"BALL EMBALAGENS LTDA - CLT",96:"BALL EMBALAGENS LTDA - TEMPORARIOS",97:"LATICINIOS BELA VISTA - CLT",98:"LATICINIOS BELA VISTA - TEMPORARIO",99:"TALENTOS RJ - CLT",100:"TALENTOS RJ - TEMPORARIO",101:"TALENTOS SP - CLT",102:"AMBEV PIRAI - CLT",103:"AMBEV PIRAI - TEMPORARIO",104:"AMBEV VIDROS - CLT",105:"AMBEV VIDROS - TEMPORARIO",106:"KONGSBERG MARITIME - CLT",107:"KONGSBERG MARITIME - TEMPORARIO",108:"SVITZER - CLT",109:"SVITZER - TEMPORARIO",110:"VIATRIS BRASIL - CLT",111:"VIATRIS BRASIL - TEMPORARIO",112:"GREIF - CLT",113:"VIATRIS SP - CLT",114:"ABS - CLT",115:"ABS - TEMPORARIO",116:"RUHRPUMPEN - CLT",117:"RUHRPUMPEN - TEMPORARIO",118:"AMBEV NOVA RIO EMP - CLT",119:"AMBEV NOVA RIO EMP - TEMPORARIO",};
+                        const filialMap = {1:"TALENTOS - CLT",2:"TALENTOS - TEMPORARIO",3:"AMBEV CACHOEIRAS DE MACACU - CLT",4:"AMBEV CACHOEIRAS DE MACACU - TEMPORARIO",5:"AMBEV NOVA RIO - CLT",6:"AMBEV NOVA RIO - TEMPORARIO",7:"ARM ARMAZENS - CLT",8:"ARM ARMAZENS - TEMPORARIO",9:"BUNGE ALIMENTOS - CLT",10:"BUNGE ALIMENTOS - TEMPORARIO",11:"CARTA GOIAS - CLT",12:"CARTA GOIAS - TEMPORARIO",13:"GUANABARA T DE CASTRO - CLT",14:"GUANABARA T DE CASTRO - TEMPORARIO",15:"GUANABARA AGUA BRANCA - CLT",16:"GUANABARA AGUA BRANCA - TEMPORARIO",17:"CERVEJARIA BOHEMIA - CLT",18:"CERVEJARIA BOHEMIA - TEMPORARIO",19:"CLUB MED - CLT",20:"CLUB MED - TEMPORARIO",21:"CEPE/RIO - CLT",22:"CEPE/RIO - TEMPORARIO",23:"CORRFA - CLT",24:"CORRFA - TEMPORARIO",25:"CONSORCIO PIPE - CLT",26:"CONSORCIO PIPE - TEMPORARIO",27:"HALLIDAY GUIMARAES - CLT",28:"HALLIDAY GUIMARAES - TEMPORARIO",29:"CONTRUTORA NORBERTO ODEBRECHT - CLT",30:"CONTRUTORA NORBERTO ODEBRECHT - TEMPORARIO",31:"CRBS CDD JPA - CLT",32:"CRBS CDD JPA - TEMPORARIO",33:"CRBS CDD PAVUNA - CLT",34:"CRBS CDD PAVUNA - TEMPORARIO",35:"CRBS CDD SC - CLT",36:"CRBS CDD SC - TEMPORARIO",37:"CERVEJARIA JAGUARIUNA - CLT",38:"CERVEJARIA JAGUARIUNA - TEMPORARIO",39:"CERVEJARIA AGUAS CLARAS - CLT",40:"CERVEJARIA AGUAS CLARAS - TEMPORARIO",41:"CERVEJARIA LEYENDA - CLT",42:"CERVEJARIA LEYENDA - TEMPORARIO",43:"CERVEJARIA SAO LUIS - CLT",44:"CERVEJARIA SAO LUIS - TEMPORARIO",45:"CERVEJARIA SAO LUIS FABRICA - CLT",46:"CERVEJARIA SAO LUIS FABRICA - TEMPORARIO",47:"CONSTRUTORA QUEIROZ GALVAO - CLT",48:"CONSTRUTORA QUEIROZ GALVAO - TEMPORARIO",49:"CONSTRUTORA QUEIROZ GALVAO - GO",50:"CONSTRUTORA QUEIROZ GALVAO - GO",51:"CONSTRUTORA QUEIROZ GALVAO - SP",52:"VIGODENT INDUSTRIA - CLT",53:"VIGODENT INDUSTRIA - TEMPORARIO",54:"VIATRIS DISTRIBUIDORA - CLT",55:"VIATRIS DISTRIBUIDORA - TEMPORARIO",56:"CONSORCIO PIPE - CLT",57:"CONSORCIO PIPE - TEMPORARIO",58:"BRF - CLT",59:"VIATRIS CAMPOS",60:"VIATRIS CAMPOS - TEMPORARIO",61:"MYLAN/VIATRIS CAMPINAS - CLT",62:"MYLAN/VIATRIS CAMPINAS - TEMPORARIO",63:"PROJETO VILA LEOPOLDINA - CLT",64:"PROJETO VILA LEOPOLDINA - TEMPORARIO",65:"PROJETO VOLTA REDONDA - CLT",66:"PROJETO VOLTA REDONDA - TEMPORARIO",67:"PROJETO MINAS GERAIS - CLT",68:"PROJETO MINAS GERAIS - TEMPORARIO",69:"CRBS CDD VOLTA REDONDA - CLT",70:"CRBS CDD VOLTA REDONDA - TEMPORARIO",71:"CRBS CDD NOVA IGUAÇU - CLT",72:"CRBS CDD NOVA IGUAÇU - TEMPORARIO",73:"CRBS CDD VOLTA REDONDA - CLT",74:"CRBS CDD VOLTA REDONDA - TEMPORARIO",75:"ALYA - CLT",76:"ALYA - TEMPORARIO",77:"PROJETO JPA ARQUIVO CLT",78:"PROJETO JPA ARQUIVO TEMP",79:"EXTERRAN - CLT",80:"EXTERRAN - TEMPORARIO",81:"MYLAN DISTRIBUIDORA DE MEDICAMENTOS - CLT",82:"MYLAN DISTRIBUIDora DE MEDICAMENTOS - TEMPORARIO",83:"AMBEV JAGUARIUNA - CLT",84:"AMBEV JAGUARIUNA - TEMPORARIO",85:"BELA VISTA INCORPORADORA - CLT",86:"BELA VISTA INCORPORADORA - TEMPORARIO",87:"KONGSBERG MARITIME CM BRASIL LTDA. - CLT",88:"KONGSBERG MARITIME CM BRASIL LTDA - TEMPORARIO",89:"CNO S/A - CLT",90:"CNO S/A - TEMPORARIO",91:"BLU (ENOPP) - CLT",92:"BLU (ENOPP) - TEMPORARIO",93:"MYLAN BRASIL DISTRIBUIDORA - CLT",94:"MYLAN BRASIL DISTRIBUIDORA - TEMPORARIO",95:"BALL EMBALAGENS LTDA - CLT",96:"BALL EMBALAGENS LTDA - TEMPORARIOS",97:"LATICINIOS BELA VISTA - CLT",98:"LATICINIOS BELA VISTA - TEMPORARIO",99:"TALENTOS RJ - CLT",100:"TALENTOS RJ - TEMPORARIO",101:"TALENTOS SP - CLT",102:"AMBEV PIRAI - CLT",103:"AMBEV PIRAI - TEMPORARIO",104:"AMBEV VIDROS - CLT",105:"AMBEV VIDROS - TEMPORARIO",106:"KONGSBERG MARITIME - CLT",107:"KONGSBERG MARITIME - TEMPORARIO",108:"SVITZER - CLT",109:"SVITZER - TEMPORARIO",110:"VIATRIS BRASIL - CLT",111:"VIATRIS BRASIL - TEMPORARIO",112:"GREIF - CLT",113:"VIATRIS SP - CLT",114:"ABS - CLT",115:"ABS - TEMPORARIO",116:"RUHRPUMPEN - CLT",117:"RUHRPUMPEN - TEMPORARIO",118:"AMBEV NOVA RIO EMP - CLT",119:"AMBEV NOVA RIO EMP - TEMPORARIO"};
                         cellData = filialMap[cellData] || cellData;
                     }
 

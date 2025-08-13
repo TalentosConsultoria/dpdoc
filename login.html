@@ -1,58 +1,115 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="scroll-smooth">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login • Talentos Consultoria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Talentos Consultoria</title>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS - Adicionado o CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Tailwind CDN apenas para layout rápido -->
-  <script src="https://cdn.tailwindcss.com" defer></script>
+    <!-- Configuração de cores personalizadas do Tailwind e animações -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1A237E', // Azul-escuro
+                        secondary: '#FF6F00', // Laranja vibrante
+                        background: '#F0F4F8', // Cinza muito claro
+                        card: '#FFFFFF', // Branco puro
+                        text: '#212121', // Cinza escuro para textos
+                        'text-muted': '#616161', // Cinza para textos secundários
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 1s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
 
-  <!-- Firebase compat (app, auth) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
+    <!-- Script de Autenticação MSAL -->
+    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.19.0/dist/msal-browser.min.js"></script>
+    <script>
+        // Configuração do MSAL
+        const msalConfig = {
+            auth: {
+                clientId: "SEU_CLIENT_ID",
+                authority: "https://login.microsoftonline.com/SEU_TENANT_ID",
+                redirectUri: "http://localhost/login.html",
+            },
+        };
 
-  <!-- Configuração do projeto (DEVE vir antes de login.js) -->
-  <script>
-  // Preencha com as suas chaves já usadas
-  window.TalentosConfig = {
-    firebase: {
-      apiKey: "AIzaSyDgm9XVyk3myuMdpU7lGHm6z5gRyOKmiyw",
-      authDomain: "talentosbd-e4206.firebaseapp.com",
-      projectId: "talentosbd-e4206",
-      storageBucket: "talentosbd-e4206.appspot.com",
-      messagingSenderId: "688471762561",
-      appId: "1:688471762561:web:119a3758d63a8df7126a4b"
-    },
-    // Opcional: domínio corporativo para validação do e-mail
-    allowedEmailDomain: "talentosconsultoria.com.br"
-  };
-  </script>
-  <script src="./config.js" defer></script>
-  <script src="./login.js" defer></script>
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-  <style>
-    body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); }
-    .btn{ padding:.75rem 1rem; border:1px solid rgba(255,255,255,.15); border-radius:.75rem; }
-  </style>
+        // Função para iniciar o login
+        function login() {
+            const loginRequest = {
+                scopes: ["User.Read"],
+            };
+            msalInstance.loginPopup(loginRequest)
+                .then(response => {
+                    console.log("Usuário autenticado", response);
+                    localStorage.setItem('authToken', response.accessToken);
+                    window.location.href = "index.html";
+                })
+                .catch(error => {
+                    console.error("Erro na autenticação", error);
+                    // Usar um modal ou mensagem na tela ao invés de alert()
+                    const errorMessage = document.getElementById('error-message');
+                    if (errorMessage) {
+                        errorMessage.textContent = "Não foi possível realizar o login. Por favor, tente novamente.";
+                        errorMessage.classList.remove('hidden');
+                    }
+                });
+        }
+        
+        // Remove a chamada de login automática no carregamento
+        window.onload = function () {
+            // O login agora é acionado pelo clique no botão.
+        };
+    </script>
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
-  <main class="card max-w-md w-full rounded-2xl shadow-xl p-8">
-    <header class="mb-6">
-      <h1 class="text-2xl font-semibold">Acesso Talentos</h1>
-      <p class="text-sm opacity-80">Use sua conta corporativa Microsoft.</p>
-    </header>
 
-    <div id="status" class="text-sm opacity-80 mb-4">Preparando autenticação…</div>
+<!-- Fundo com gradiente suave -->
+<body class="bg-gradient-to-br from-background via-gray-100 to-background flex min-h-screen font-sans text-text">
+    <main class="flex-grow flex flex-col justify-center items-center p-4">
+        <!-- Card de Login -->
+        <div class="bg-card p-8 md:p-12 rounded-3xl shadow-xl w-full max-w-md text-center transform transition-all duration-500 animate-fadeIn">
+            <!-- Logo e Título -->
+            <div class="mb-8">
+                <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Logo Talentos Consultoria" class="mx-auto h-16 rounded-full shadow-md mb-4">
+                <h1 class="text-3xl font-bold text-primary">Bem-vindo(a)!</h1>
+                <p class="text-md text-text-muted mt-2">Faça o login na sua conta para continuar.</p>
+            </div>
+            
+            <!-- Botão de Login com Microsoft -->
+            <button onclick="login()" class="w-full py-4 px-6 bg-primary text-white font-semibold rounded-2xl shadow-lg hover:bg-secondary transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl">
+                <span class="inline-block text-lg">Entrar com Microsoft</span>
+            </button>
+            
+            <!-- Mensagem de erro oculta -->
+            <div id="error-message" class="hidden mt-4 p-3 bg-red-100 text-red-700 rounded-lg"></div>
 
-    <button id="signin-btn" class="btn w-full hidden">Entrar com Microsoft</button>
-
-    <div id="error-box" class="mt-4 text-red-300 text-sm hidden"></div>
-
-    <footer class="mt-8 text-xs opacity-60">
-      Problemas de loop? Feche esta aba e abra novamente em modo anônimo para limpar sessão.
-    </footer>
-  </main>
+            <div class="mt-8 text-sm text-text-muted">
+                <p>&copy; 2024 Talentos Consultoria. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </main>
 </body>
 </html>

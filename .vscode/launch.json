@@ -4,12 +4,11 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
-            "type": "node-terminal",
-            "name": "JavaScript Debug Terminal",
+            "type": "chrome",
             "request": "launch",
-            "cwd": "${workspaceFolder}"
+            "name": "Open login.html",
+            "file": "c:\\Users\\anderson.junior\\OneDrive - Talentos Consultoria\\Documentos\\CSS separado 2\\CSS separado 2\\login.html"
         }
     ]
 }
