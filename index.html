@@ -1,195 +1,123 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPDoc • Talentos Consultoria</title>
 
-  <!-- Tailwind (layout mínimo) -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind (layout) -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
 
   <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js" defer></script>
 
-  <!-- Config do projeto (garante TalentosConfig) -->
-  <script src="./config.js?v=20250812"></script>
+  <!-- Config + Guard -->
+  <script>
+  window.TalentosConfig = {
+    firebase: {
+      apiKey: "AIzaSyDgm9XVyk3myuMdpU7lGHm6z5gRyOKmiyw",
+      authDomain: "talentosbd-e4206.firebaseapp.com",
+      projectId: "talentosbd-e4206",
+      storageBucket: "talentosbd-e4206.appspot.com",
+      messagingSenderId: "688471762561",
+      appId: "1:688471762561:web:119a3758d63a8df7126a4b"
+    }
+  };
+  </script>
+  <script src="./config.js" defer></script>
+  <script src="./auth-guard.js" defer></script>
 
   <style>
     body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08);
-           box-shadow: 0 10px 25px rgba(0,0,0,.35); }
-    .btn{ background:#111827; border:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; border-radius:.75rem; }
-    .btn:hover{ background:#1f2937; }
-    .muted{ color:#9ca3af; font-size:.875rem; }
-    .err{ color:#fecaca; }
-    a.link{ color:#93c5fd; }
+    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); }
+    .btn{ padding:.5rem .875rem; border:1px solid rgba(255,255,255,.15); border-radius:.75rem; }
+    iframe { background:#111827; }
   </style>
-
-  <script>
-    // --- Login URL sanitizer: remove return loops, URLs muito longas e return apontando para login.html ---
-    (function () {
-      "use strict";
-      try {
-        const qs = new URLSearchParams(location.search);
-        const ret = qs.get("return");
-        if (!ret) return;
-        const tooLong = location.search.length > 1800 || (ret && ret.length > 1500);
-        let hasNested = /[?&]return=/i.test(ret);
-        let isLoginTarget = false;
-        try {
-          const u = new URL(ret, location.href);
-          if (/[?&]return=/i.test(u.search)) hasNested = true;
-          isLoginTarget = /(^|\/)login(\.html)?$/i.test(u.pathname);
-        } catch {
-          isLoginTarget = true; // inválida -> trata como insegura
-        }
-        if (tooLong || hasNested || isLoginTarget) {
-          qs.delete("return");
-          const clean = location.pathname + (qs.toString() ? ("?" + qs.toString()) : "") + location.hash;
-          try { history.replaceState(null, "", clean); } catch { location.replace(clean); }
-          console.log("[login] return inválido/recursivo removido");
-        }
-      } catch (e) { console.warn("[login] sanitizer error", e); }
-    })();
-
-    // --- Util: safeReturn (sem depender do guard) ---
-    function safeReturn(candidate){
-      const fallback = (window.TalentosConfig && (TalentosConfig.DEFAULT_RETURN || "index.html")) || "index.html";
-      if (!candidate) return fallback;
-      try {
-        const u = new URL(candidate, location.href);
-        const sameOrigin = u.origin === location.origin;
-        const isLogin = /(^|\/)login(\.html)?$/i.test(u.pathname);
-        const hasNested = /[?&]return=/i.test(u.search);
-        if (!sameOrigin || isLogin || hasNested) return fallback;
-        return u.pathname + u.search + u.hash;
-      } catch { return fallback; }
-    }
-  </script>
 </head>
-<body class="min-h-screen grid place-items-center">
-  <div class="card rounded-2xl p-6 w-full max-w-md">
-    <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
-    <p id="status" class="muted mb-4">Aguardando autenticação...</p>
-    <div class="grid gap-2">
-      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
-      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
+<body class="min-h-screen p-6">
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">DPDoc</h1>
+    <div class="flex items-center gap-3">
+      <span class="text-sm opacity-80" data-user-email></span>
+      <button id="logout" class="btn">Sair</button>
     </div>
-    <p class="muted mt-3">
-      Dica: se travar em loop, acesse <code class="select-all">/login.html?noauto=1</code> ou use o botão acima.
-    </p>
-    <p id="err" class="muted err mt-2"></p>
-  </div>
+  </header>
+
+  <main class="grid gap-6 grid-cols-1 lg:grid-cols-2">
+    <section class="card rounded-2xl p-5">
+      <h2 class="text-lg font-semibold mb-3">Abrir Documento</h2>
+      <div class="grid gap-3">
+        <input id="path" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10" placeholder="Ex.: docs/meu-arquivo.pdf (Firebase Storage) ou URL https://..." />
+        <div class="flex gap-3">
+          <button id="open-storage" class="btn">Abrir do Storage</button>
+          <button id="open-url" class="btn">Abrir por URL</button>
+        </div>
+        <p class="text-xs opacity-70">
+          Observação: arquivos <code>.bdoc</code> não abrem no navegador. O download será iniciado automaticamente.
+        </p>
+      </div>
+    </section>
+
+    <section class="card rounded-2xl p-5">
+      <h2 class="text-lg font-semibold mb-3">Visualizador</h2>
+      <div class="rounded-xl overflow-hidden border border-white/10">
+        <iframe id="viewer" class="w-full" style="height:60vh;" title="Visualizador de documentos"></iframe>
+      </div>
+    </section>
+  </main>
 
   <script>
-    (function(){
-      const params = new URLSearchParams(location.search);
-      const rawReturn = params.get("return");
-      const noautoParam = params.get("noauto")==="1";
-      const hasError = params.has("error");
-      const LS_NOAUTO = "talentos_noauto";
-      const SS_ATT = "talentos_login_attempted";
+  // Logout
+  document.getElementById('logout').addEventListener('click', ()=>{
+    firebase.auth().signOut().catch(console.error);
+  });
 
-      // Define modos
-      const noAuto = noautoParam || hasError || localStorage.getItem(LS_NOAUTO)==="1";
-      const attempted = sessionStorage.getItem(SS_ATT)==="1";
+  function isPdf(url){ return /\.pdf(\?|#|$)/i.test(url); }
+  function isBdoc(url){ return /\.bdoc(\?|#|$)/i.test(url); }
 
-      const status = document.getElementById("status");
-      const errEl = document.getElementById("err");
-      const btnLogin = document.getElementById("btnLogin");
-      const btnLogout = document.getElementById("btnLogout");
+  function openInViewer(url){
+    const iframe = document.getElementById('viewer');
+    if (isBdoc(url)){
+      // BDOC não é renderizável: força download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      alert("Arquivo .bdoc baixado. Não pode ser visualizado no navegador.");
+      return;
+    }
+    if (isPdf(url)){
+      iframe.src = url; // Espera Content-Type application/pdf
+    } else {
+      // Tenta abrir mesmo assim (alguns navegadores mostrarão download)
+      iframe.src = url;
+    }
+  }
 
-      function setErr(msg){ if(errEl) errEl.textContent = msg || ""; }
-      function setStatus(msg){ if(status) status.textContent = msg || ""; }
-      function markAttempted(){ sessionStorage.setItem(SS_ATT,"1"); }
+  document.getElementById('open-url').addEventListener('click', ()=>{
+    const v = document.getElementById('path').value.trim();
+    if (!v) return;
+    openInViewer(v);
+  });
 
-      async function doLogin(){
-        try {
-          const auth = firebase.auth();
-          await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-          const provider = new firebase.auth.OAuthProvider('microsoft.com');
-          try {
-            setStatus("Abrindo provedor...");
-            markAttempted();
-            await auth.signInWithPopup(provider);
-          } catch (e) {
-            console.warn("[login] popup falhou, usando redirect", e);
-            setStatus("Redirecionando para o provedor...");
-            markAttempted();
-            await auth.signInWithRedirect(provider);
-          }
-        } catch (e) {
-          console.error("[login] erro ao iniciar login", e);
-          setErr("Falha ao iniciar login. Clique no botão novamente.");
-        }
-      }
-
-      async function doLogout(){
-        try{
-          const auth = firebase.auth();
-          await auth.signOut();
-          localStorage.setItem(LS_NOAUTO, "1"); // evita autologin após sair
-          sessionStorage.removeItem(SS_ATT);
-          setStatus("Sessão encerrada. Faça login novamente quando desejar.");
-        }catch(e){ console.warn(e); }
-      }
-
-      document.addEventListener("DOMContentLoaded", async () => {
-        const auth = firebase.auth();
-        try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch {}
-
-        // Trata redirect result ANTES de autologin
-        try {
-          const result = await auth.getRedirectResult();
-          if (result && result.user) {
-            console.log("[login] redirect result user ok");
-          }
-        } catch (e) {
-          console.warn("[login] getRedirectResult", e);
-          setErr("Erro ao retornar do provedor. Tente o botão acima.");
-        }
-
-        auth.onAuthStateChanged(async (user) => {
-          try{
-            if (!user) {
-              if (!noAuto && !attempted) {
-                setStatus("Redirecionando para o provedor...");
-                doLogin();
-              } else {
-                setStatus("Clique em 'Entrar com Microsoft' para continuar.");
-              }
-              return;
-            }
-            // Filtro de domínio
-            const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
-            const domain = String(user.email||"").split("@")[1]||"";
-            if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
-              setStatus("Domínio não permitido. Logout...");
-              try { await auth.signOut(); } catch(e){}
-              localStorage.setItem(LS_NOAUTO, "1");
-              location.replace("login.html?error=forbidden");
-              return;
-            }
-            // Sessão ok → redireciona para retorno seguro
-            const ret = safeReturn(rawReturn);
-            setStatus("Autenticado. Abrindo " + ret + "...");
-            location.replace(ret);
-          }catch(e){
-            console.error(e);
-            setErr("Erro inesperado na autenticação.");
-            setStatus("");
-          }
-        });
-
-        btnLogin?.addEventListener("click", () => {
-          localStorage.removeItem(LS_NOAUTO); // reabilita autologin
-          sessionStorage.setItem(SS_ATT,"1");
-          doLogin();
-        });
-        btnLogout?.addEventListener("click", doLogout);
+  document.getElementById('open-storage').addEventListener('click', ()=>{
+    const v = document.getElementById('path').value.trim();
+    if (!v) return;
+    try{
+      const ref = firebase.storage().ref(v);
+      ref.getDownloadURL().then(openInViewer).catch((e)=>{
+        alert("Erro ao obter URL do Storage: " + e.message);
+        console.error(e);
       });
-    })();
+    } catch(e){
+      alert("Storage não inicializado: " + e.message);
+      console.error(e);
+    }
+  });
   </script>
 </body>
 </html>

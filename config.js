@@ -1,34 +1,18 @@
-(function (global) {
- const firebaseConfig = {
-  apiKey: "AIzaSyAL8t7tsgoCoNj3nkfUG3mKz0WEpRmH3K8",
-  authDomain: "talentosbd-e4206.firebaseapp.com",
-  projectId: "talentosbd-e4206",
-  storageBucket: "talentosbd-e4206.firebasestorage.app",
-  messagingSenderId: "580727253031",
-  appId: "1:580727253031:web:5368302ef0da6277788602",
-  measurementId: "G-S464LNX2J9"
-};
-
-  if (!global.firebase) { console.error("[config] Firebase SDK não carregado."); }
-  else {
-    try {
-      const noAppCompat = (firebase.apps && firebase.apps.length === 0);
-      const noAppMod = (firebase.getApps && firebase.getApps().length === 0);
-      if (noAppCompat || noAppMod) { firebase.initializeApp(firebaseConfig); console.log("[config] Firebase App inicializado (DEFAULT)."); }
-      else { console.log("[config] Firebase App já estava inicializado."); }
-    } catch (e) { console.error("[config] Falha ao inicializar Firebase App:", e); }
+/* config.js
+ * Inicializa o Firebase usando objeto global window.TalentosConfig fornecido no HTML.
+ * Garanta que window.TalentosConfig.firebase contenha as chaves do projeto.
+ */
+(function () {
+  if (!window.TalentosConfig || !window.TalentosConfig.firebase) {
+    console.error("TalentosConfig.firebase não encontrado. Defina em <script> antes de carregar config.js.");
+    return;
   }
+  // Evita reinit múltiplo
+  if (firebase.apps && firebase.apps.length) return;
 
-  global.TalentosConfig = {
-    firebaseConfig: firebaseConfig,
-    ALLOWED_DOMAINS: ["talentosconsultoria.com.br"],
-    LOGIN_PAGE: "login.html",
-    DEFAULT_RETURN: "index.html",
-    ALLOWED_ORIGINS_DEBUG: [],
-    AAD_TENANT: 'talentosconsultoria.com.br',
-    AAD_TENANT_ID: 'cba0be9f-94ad-4a26-b291-fa90af7491ee'
-  };
-  TalentosConfig.allowedDomains = TalentosConfig.ALLOWED_DOMAINS;
-  TalentosConfig.redirectAfterLogin = TalentosConfig.DEFAULT_RETURN;
-  TalentosConfig.loginPage = TalentosConfig.LOGIN_PAGE;
-})(window);
+  firebase.initializeApp(window.TalentosConfig.firebase);
+  // Opcional: persisência em LOCAL para não perder sessão em reload
+  try {
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch(e){ console.warn("Persistência não ajustada:", e); }
+})();
