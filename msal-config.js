@@ -11,7 +11,7 @@
 
   window.MSAL_CONFIG = {
     auth: {
-      clientId: CLIENT_ID,
+      clientId: aceb5b29-df99-4d90-8533-233407b08a2c,
       authority: "https://login.microsoftonline.com/" + TENANT_ID,
       redirectUri: redirect,
       postLogoutRedirectUri: redirect,
