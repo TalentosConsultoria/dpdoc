@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acesso negado — Talentos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="./config.js?v=20250812"></script>
+</head>
+<body class="min-h-screen grid place-items-center bg-gray-50">
+  <div class="bg-white rounded-2xl shadow p-8 max-w-lg w-full text-center">
+    <h1 class="text-2xl font-semibold mb-2">Acesso negado</h1>
+    <p class="text-gray-600">Sua conta não pertence ao domínio permitido.</p>
+    <p class="text-gray-500 text-sm mt-2">Use seu e-mail corporativo <b>@talentosconsultoria.com.br</b>.</p>
+    <div class="mt-6 grid gap-2">
+      <a href="./login.html?noauto=1" class="px-4 py-2 rounded-lg border hover:bg-gray-50">Entrar novamente</a>
+      <button id="btnLogout" class="px-4 py-2 rounded-lg border hover:bg-gray-50">Sair desta conta</button>
+    </div>
+  </div>
+  <script>
+    document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
+      try {
+        if (window.firebase?.auth) await firebase.auth().signOut();
+        localStorage.setItem("talentos_noauto","1");
+      } catch(e){}
+      location.replace("login.html?noauto=1");
+    });
+  </script>
+</body>
+</html>
