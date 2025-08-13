@@ -9,9 +9,9 @@
   <script src="https://cdn.tailwindcss.com" defer></script>
 
   <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js" defer></script>
+  
+  
+  
 
   <!-- Config + Guard -->
   <script>
@@ -71,7 +71,7 @@
   <script>
   // Logout
   document.getElementById('logout').addEventListener('click', ()=>{
-    firebase.auth().signOut().catch(console.error);
+    microsoftAuth().signOut().catch(console.error);
   });
 
   function isPdf(url){ return /\.pdf(\?|#|$)/i.test(url); }
@@ -119,5 +119,23 @@
     }
   });
   </script>
+
+<script src="https://js.microsoft.com/v1/1/azure/identity.js"></script>
+<script>
+  async function microsoftLogin() {
+    const provider = new firebase.auth.OAuthProvider('microsoft.com');
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      domain_hint: 'talentosconsultoria.com.br'
+    });
+    try {
+      await firebase.auth().signInWithPopup(provider);
+      window.location.href = 'index.html'; // Redirect after login
+    } catch (error) {
+      console.error("Microsoft login error: ", error);
+      alert("Login failed. Please try again.");
+    }
+  }
+</script>
 </body>
 </html>
