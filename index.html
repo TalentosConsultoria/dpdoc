@@ -1,195 +1,174 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Talentos Consultoria</title>
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPDoc • Talentos Consultoria</title>
 
-  <!-- Tailwind (layout mínimo) -->
+  <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            primary: '#004aad',
+            secondary: '#196dff',
+            background: '#f1f5f9',
+            card: '#ffffff',
+          },
+        },
+      },
+    };
+  </script>
 
-  <!-- Firebase compat -->
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body{ background:#f7f7f9 }
+    .card{ max-width: 980px }
+  </style>
+
+  <!-- Firebase compat (app + auth) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 
-  <!-- Config do projeto (garante TalentosConfig) -->
+  <!-- Config + Guard (com versionamento para bust de cache) -->
   <script src="./config.js?v=20250812"></script>
-
-  <style>
-    body { background:#0b1020; color:#e5e7eb; }
-    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08);
-           box-shadow: 0 10px 25px rgba(0,0,0,.35); }
-    .btn{ background:#111827; border:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; border-radius:.75rem; }
-    .btn:hover{ background:#1f2937; }
-    .muted{ color:#9ca3af; font-size:.875rem; }
-    .err{ color:#fecaca; }
-    a.link{ color:#93c5fd; }
-  </style>
-
-  <script>
-    // --- Login URL sanitizer: remove return loops, URLs muito longas e return apontando para login.html ---
-    (function () {
-      "use strict";
-      try {
-        const qs = new URLSearchParams(location.search);
-        const ret = qs.get("return");
-        if (!ret) return;
-        const tooLong = location.search.length > 1800 || (ret && ret.length > 1500);
-        let hasNested = /[?&]return=/i.test(ret);
-        let isLoginTarget = false;
-        try {
-          const u = new URL(ret, location.href);
-          if (/[?&]return=/i.test(u.search)) hasNested = true;
-          isLoginTarget = /(^|\/)login(\.html)?$/i.test(u.pathname);
-        } catch {
-          isLoginTarget = true; // inválida -> trata como insegura
-        }
-        if (tooLong || hasNested || isLoginTarget) {
-          qs.delete("return");
-          const clean = location.pathname + (qs.toString() ? ("?" + qs.toString()) : "") + location.hash;
-          try { history.replaceState(null, "", clean); } catch { location.replace(clean); }
-          console.log("[login] return inválido/recursivo removido");
-        }
-      } catch (e) { console.warn("[login] sanitizer error", e); }
-    })();
-
-    // --- Util: safeReturn (sem depender do guard) ---
-    function safeReturn(candidate){
-      const fallback = (window.TalentosConfig && (TalentosConfig.DEFAULT_RETURN || "index.html")) || "index.html";
-      if (!candidate) return fallback;
-      try {
-        const u = new URL(candidate, location.href);
-        const sameOrigin = u.origin === location.origin;
-        const isLogin = /(^|\/)login(\.html)?$/i.test(u.pathname);
-        const hasNested = /[?&]return=/i.test(u.search);
-        if (!sameOrigin || isLogin || hasNested) return fallback;
-        return u.pathname + u.search + u.hash;
-      } catch { return fallback; }
-    }
-  </script>
+  <script src="./auth-guard.js?v=20250812"></script>
 </head>
-<body class="min-h-screen grid place-items-center">
-  <div class="card rounded-2xl p-6 w-full max-w-md">
-    <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
-    <p id="status" class="muted mb-4">Aguardando autenticação...</p>
-    <div class="grid gap-2">
-      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
-      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
+
+<body class="bg-background flex flex-col min-h-screen font-sans">
+  <!-- HEADER -->
+  <header class="bg-white/95 backdrop-blur sticky top-0 z-50 border-b">
+    <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="./index.html" class="flex items-center gap-3">
+        <img src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png" alt="Talentos" class="w-9 h-9 rounded-full shadow-md">
+        <span class="text-base md:text-lg font-semibold">Talentos Consultoria — DPDoc</span>
+      </a>
+
+      <nav class="relative flex items-center gap-3">
+        <!-- Ferramentas (dropdown desktop) -->
+        <div class="relative hidden md:block">
+          <button id="toolsBtn" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-gray-50">
+            Ferramentas
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+          <div id="toolsMenu" class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border p-2 hidden">
+            <a href="./qlp-format.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Formatador QLP</a>
+            <a href="./format-bancodoc.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Unificação de Planilhas: QLP - Bancodoc</a>
+            <a href="./pdf-tool.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Juntar / Reorganizar PDFs</a>
+          </div>
+        </div>
+
+        <!-- Botão Sair -->
+        <button id="btnLogout" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-gray-50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <path d="M16 17l5-5-5-5"/>
+            <path d="M21 12H9"/>
+          </svg>
+          Sair
+        </button>
+
+        <!-- Menu mobile -->
+        <button id="btnMobile" class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border hover:bg-gray-50" aria-label="Menu">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
+      </nav>
     </div>
-    <p class="muted mt-3">
-      Dica: se travar em loop, acesse <code class="select-all">/login.html?noauto=1</code> ou use o botão acima.
-    </p>
-    <p id="err" class="muted err mt-2"></p>
-  </div>
 
+    <!-- Drawer mobile -->
+    <div id="drawer" class="md:hidden border-t bg-white hidden">
+      <div class="container mx-auto px-4 py-3 space-y-1">
+        <a href="./qlp-format.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Formatador QLP</a>
+        <a href="./format-bancodoc.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Unificação de Planilhas: QLP - Bancodoc</a>
+        <a href="./pdf-tool.html" class="block px-3 py-2 rounded-lg hover:bg-gray-50">Juntar / Reorganizar PDFs</a>
+        <button id="btnLogoutMobile" class="w-full mt-2 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border hover:bg-gray-50">
+          Sair
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO -->
+  <main class="flex-1 grid place-items-center px-4">
+    <section class="bg-white rounded-2xl shadow p-8 max-w-3xl w-full text-center">
+      <h2 class="text-3xl font-bold mb-3">Bem‑vindo(a) à sua Central de Ferramentas</h2>
+      <p class="text-gray-600">Use o menu <b>Ferramentas</b> no topo para abrir o que você precisa.</p>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="text-center text-sm text-gray-500 py-6">© 2025 Talentos Consultoria</footer>
+
+  <!-- APP SCRIPT -->
   <script>
-    (function(){
-      const params = new URLSearchParams(location.search);
-      const rawReturn = params.get("return");
-      const noautoParam = params.get("noauto")==="1";
-      const hasError = params.has("error");
-      const LS_NOAUTO = "talentos_noauto";
-      const SS_ATT = "talentos_login_attempted";
-
-      // Define modos
-      const noAuto = noautoParam || hasError || localStorage.getItem(LS_NOAUTO)==="1";
-      const attempted = sessionStorage.getItem(SS_ATT)==="1";
-
-      const status = document.getElementById("status");
-      const errEl = document.getElementById("err");
-      const btnLogin = document.getElementById("btnLogin");
-      const btnLogout = document.getElementById("btnLogout");
-
-      function setErr(msg){ if(errEl) errEl.textContent = msg || ""; }
-      function setStatus(msg){ if(status) status.textContent = msg || ""; }
-      function markAttempted(){ sessionStorage.setItem(SS_ATT,"1"); }
-
-      async function doLogin(){
-        try {
-          const auth = firebase.auth();
-          await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-          const provider = new firebase.auth.OAuthProvider('microsoft.com');
-          try {
-            setStatus("Abrindo provedor...");
-            markAttempted();
-            await auth.signInWithPopup(provider);
-          } catch (e) {
-            console.warn("[login] popup falhou, usando redirect", e);
-            setStatus("Redirecionando para o provedor...");
-            markAttempted();
-            await auth.signInWithRedirect(provider);
-          }
-        } catch (e) {
-          console.error("[login] erro ao iniciar login", e);
-          setErr("Falha ao iniciar login. Clique no botão novamente.");
-        }
-      }
-
-      async function doLogout(){
-        try{
-          const auth = firebase.auth();
-          await auth.signOut();
-          localStorage.setItem(LS_NOAUTO, "1"); // evita autologin após sair
-          sessionStorage.removeItem(SS_ATT);
-          setStatus("Sessão encerrada. Faça login novamente quando desejar.");
-        }catch(e){ console.warn(e); }
-      }
-
-      document.addEventListener("DOMContentLoaded", async () => {
-        const auth = firebase.auth();
-        try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch {}
-
-        // Trata redirect result ANTES de autologin
-        try {
-          const result = await auth.getRedirectResult();
-          if (result && result.user) {
-            console.log("[login] redirect result user ok");
-          }
-        } catch (e) {
-          console.warn("[login] getRedirectResult", e);
-          setErr("Erro ao retornar do provedor. Tente o botão acima.");
-        }
-
-        auth.onAuthStateChanged(async (user) => {
-          try{
-            if (!user) {
-              if (!noAuto && !attempted) {
-                setStatus("Redirecionando para o provedor...");
-                doLogin();
-              } else {
-                setStatus("Clique em 'Entrar com Microsoft' para continuar.");
-              }
-              return;
-            }
-            // Filtro de domínio
-            const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
-            const domain = String(user.email||"").split("@")[1]||"";
-            if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
-              setStatus("Domínio não permitido. Logout...");
-              try { await auth.signOut(); } catch(e){}
-              localStorage.setItem(LS_NOAUTO, "1");
-              location.replace("login.html?error=forbidden");
-              return;
-            }
-            // Sessão ok → redireciona para retorno seguro
-            const ret = safeReturn(rawReturn);
-            setStatus("Autenticado. Abrindo " + ret + "...");
-            location.replace(ret);
-          }catch(e){
-            console.error(e);
-            setErr("Erro inesperado na autenticação.");
-            setStatus("");
-          }
-        });
-
-        btnLogin?.addEventListener("click", () => {
-          localStorage.removeItem(LS_NOAUTO); // reabilita autologin
-          sessionStorage.setItem(SS_ATT,"1");
-          doLogin();
-        });
-        btnLogout?.addEventListener("click", doLogout);
+    // Dropdown desktop
+    const toolsBtn = document.getElementById('toolsBtn');
+    const toolsMenu = document.getElementById('toolsMenu');
+    if (toolsBtn && toolsMenu) {
+      toolsBtn.addEventListener('click', () => toolsMenu.classList.toggle('hidden'));
+      document.addEventListener('click', (e) => {
+        if (!toolsMenu.contains(e.target) && !toolsBtn.contains(e.target)) toolsMenu.classList.add('hidden');
       });
-    })();
+    }
+
+    // Drawer mobile
+    const btnMobile = document.getElementById('btnMobile');
+    const drawer = document.getElementById('drawer');
+    if (btnMobile && drawer) btnMobile.addEventListener('click', () => drawer.classList.toggle('hidden'));
+
+    // Logout buttons
+    function wireLogout(el) {
+      if (!el) return;
+      el.addEventListener('click', async () => {
+        try {
+          if (window.logoutTalentos) {
+            await window.logoutTalentos();
+          } else if (window.firebase?.auth) {
+            await firebase.auth().signOut();
+            location.replace((window.TalentosConfig && TalentosConfig.LOGIN_PAGE) || "login.html");
+          } else {
+            location.replace("login.html");
+          }
+        } catch(e) { console.error(e); }
+      });
+    }
+    wireLogout(document.getElementById('btnLogout'));
+    wireLogout(document.getElementById('btnLogoutMobile'));
+  </script>
+
+  <!-- Proteção de rota (somente quando Firebase+Config+Guard estiverem prontos) -->
+  <script>
+  (async function ensureProtect(){
+    function ready(){
+      return !!(window.firebase && firebase.auth && window.TalentosConfig && window.TalentosAuthGuard && TalentosAuthGuard.protect);
+    }
+    let tries = 0;
+    while(!ready() && tries < 40){ // ~4s
+      await new Promise(r=>setTimeout(r,100));
+      tries++;
+    }
+    try {
+      if (window.TalentosAuthGuard?.protect) {
+        TalentosAuthGuard.protect();
+      } else {
+        console.error("[index] Guard indisponível após timeout; não foi chamada a proteção.");
+      }
+    } catch(e){ console.error(e); }
+  })();
   </script>
 </body>
 </html>
