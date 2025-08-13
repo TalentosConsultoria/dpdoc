@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPDoc • Talentos Consultoria</title>
+
+  <!-- Tailwind (layout) -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js" defer></script>
+
+  <!-- Config + Guard -->
+  <script>
+  window.TalentosConfig = {
+    firebase: {
+      apiKey: "AIzaSyDgm9XVyk3myuMdpU7lGHm6z5gRyOKmiyw",
+      authDomain: "talentosbd-e4206.firebaseapp.com",
+      projectId: "talentosbd-e4206",
+      storageBucket: "talentosbd-e4206.appspot.com",
+      messagingSenderId: "688471762561",
+      appId: "1:688471762561:web:119a3758d63a8df7126a4b"
+    }
+  };
+  </script>
+  <script src="./config.js" defer></script>
+  <script src="./auth-guard.js" defer></script>
+
+  <style>
+    body { background:#0b1020; color:#e5e7eb; }
+    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08); }
+    .btn{ padding:.5rem .875rem; border:1px solid rgba(255,255,255,.15); border-radius:.75rem; }
+    iframe { background:#111827; }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">DPDoc</h1>
+    <div class="flex items-center gap-3">
+      <span class="text-sm opacity-80" data-user-email></span>
+      <button id="logout" class="btn">Sair</button>
+    </div>
+  </header>
+
+  <main class="grid gap-6 grid-cols-1 lg:grid-cols-2">
+    <section class="card rounded-2xl p-5">
+      <h2 class="text-lg font-semibold mb-3">Abrir Documento</h2>
+      <div class="grid gap-3">
+        <input id="path" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10" placeholder="Ex.: docs/meu-arquivo.pdf (Firebase Storage) ou URL https://..." />
+        <div class="flex gap-3">
+          <button id="open-storage" class="btn">Abrir do Storage</button>
+          <button id="open-url" class="btn">Abrir por URL</button>
+        </div>
+        <p class="text-xs opacity-70">
+          Observação: arquivos <code>.bdoc</code> não abrem no navegador. O download será iniciado automaticamente.
+        </p>
+      </div>
+    </section>
+
+    <section class="card rounded-2xl p-5">
+      <h2 class="text-lg font-semibold mb-3">Visualizador</h2>
+      <div class="rounded-xl overflow-hidden border border-white/10">
+        <iframe id="viewer" class="w-full" style="height:60vh;" title="Visualizador de documentos"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  // Logout
+  document.getElementById('logout').addEventListener('click', ()=>{
+    firebase.auth().signOut().catch(console.error);
+  });
+
+  function isPdf(url){ return /\.pdf(\?|#|$)/i.test(url); }
+  function isBdoc(url){ return /\.bdoc(\?|#|$)/i.test(url); }
+
+  function openInViewer(url){
+    const iframe = document.getElementById('viewer');
+    if (isBdoc(url)){
+      // BDOC não é renderizável: força download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      alert("Arquivo .bdoc baixado. Não pode ser visualizado no navegador.");
+      return;
+    }
+    if (isPdf(url)){
+      iframe.src = url; // Espera Content-Type application/pdf
+    } else {
+      // Tenta abrir mesmo assim (alguns navegadores mostrarão download)
+      iframe.src = url;
+    }
+  }
+
+  document.getElementById('open-url').addEventListener('click', ()=>{
+    const v = document.getElementById('path').value.trim();
+    if (!v) return;
+    openInViewer(v);
+  });
+
+  document.getElementById('open-storage').addEventListener('click', ()=>{
+    const v = document.getElementById('path').value.trim();
+    if (!v) return;
+    try{
+      const ref = firebase.storage().ref(v);
+      ref.getDownloadURL().then(openInViewer).catch((e)=>{
+        alert("Erro ao obter URL do Storage: " + e.message);
+        console.error(e);
+      });
+    } catch(e){
+      alert("Storage não inicializado: " + e.message);
+      console.error(e);
+    }
+  });
+  </script>
+</body>
+</html>
