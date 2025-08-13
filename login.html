@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Talentos Consultoria</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="./config.js?v=20250812"></script>
+
+  <style>
+    body { background:#0b1020; color:#e5e7eb; }
+    .card{ background:rgba(16,25,50,.92); border:1px solid rgba(255,255,255,.08);
+           box-shadow: 0 10px 25px rgba(0,0,0,.35); }
+    .btn{ background:#111827; border:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; border-radius:.75rem; }
+    .btn:hover{ background:#1f2937; }
+    .muted{ color:#9ca3af; font-size:.875rem; }
+    .err{ color:#fecaca; }
+  </style>
+
+  <script>
+    // Sanitiza 'return' para evitar recursão
+    (function () {
+      "use strict";
+      try {
+        const qs = new URLSearchParams(location.search);
+        const ret = qs.get("return");
+        if (!ret) return;
+        const tooLong = location.search.length > 1800 || (ret && ret.length > 1500);
+        let hasNested = /[?&]return=/i.test(ret);
+        let isLoginTarget = false;
+        try {
+          const u = new URL(ret, location.href);
+          if (/[?&]return=/i.test(u.search)) hasNested = true;
+          isLoginTarget = /(^|\/)login(\.html)?$/i.test(u.pathname);
+        } catch {
+          isLoginTarget = true;
+        }
+        if (tooLong || hasNested || isLoginTarget) {
+          qs.delete("return");
+          const clean = location.pathname + (qs.toString() ? ("?" + qs.toString()) : "") + location.hash;
+          try { history.replaceState(null, "", clean); } catch { location.replace(clean); }
+        }
+      } catch (e) {}
+    })();
+
+    function safeReturn(candidate){
+      const fallback = (window.TalentosConfig && (TalentosConfig.DEFAULT_RETURN || "index.html")) || "index.html";
+      if (!candidate) return fallback;
+      try {
+        const u = new URL(candidate, location.href);
+        const sameOrigin = u.origin === location.origin;
+        const isLogin = /(^|\/)login(\.html)?$/i.test(u.pathname);
+        const hasNested = /[?&]return=/i.test(u.search);
+        if (!sameOrigin || isLogin || hasNested) return fallback;
+        return u.pathname + u.search + u.hash;
+      } catch { return fallback; }
+    }
+  </script>
+</head>
+<body class="min-h-screen grid place-items-center">
+  <div class="card rounded-2xl p-6 w-full max-w-md">
+    <h1 class="text-xl font-semibold mb-2">Acesso Talentos Consultoria</h1>
+    <p id="status" class="muted mb-4">Aguardando autenticação...</p>
+    <div class="grid gap-2">
+      <button id="btnLogin" class="btn w-full">Entrar com Microsoft</button>
+      <button id="btnLogout" class="btn w-full">Sair desta conta</button>
+    </div>
+    <p id="hint" class="muted mt-3"></p>
+    <p id="err" class="muted err mt-2"></p>
+  </div>
+
+  <script>
+    (function(){
+      const qs = new URLSearchParams(location.search);
+      const rawReturn = qs.get("return");
+      const hasError = qs.has("error");
+      const noauto = qs.get("noauto")==="1" || hasError || localStorage.getItem("talentos_noauto")==="1";
+
+      const status = document.getElementById("status");
+      const hint = document.getElementById("hint");
+      const errEl = document.getElementById("err");
+      const btnLogin = document.getElementById("btnLogin");
+      const btnLogout = document.getElementById("btnLogout");
+
+      function setErr(m){ if (errEl) errEl.textContent = m||""; }
+      function setStatus(m){ if (status) status.textContent = m||""; }
+      function setHint(m){ if (hint) hint.textContent = m||""; }
+
+      function buildProvider(){
+        const p = new firebase.auth.OAuthProvider('microsoft.com');
+        try {
+          const TENANT = window.TalentosConfig?.AAD_TENANT_ID;
+          const HINT = (window.TalentosConfig?.ALLOWED_DOMAINS || [])[0] || "talentosconsultoria.com.br";
+          if (TENANT) p.setCustomParameters({ tenant: TENANT, prompt:"select_account", domain_hint: HINT });
+          else p.setCustomParameters({ prompt:"select_account", domain_hint: HINT });
+        } catch {}
+        return p;
+      }
+
+      async function doLogin(){
+        try {
+          const auth = firebase.auth();
+          await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+          const provider = buildProvider();
+          try {
+            setStatus("Abrindo provedor...");
+            await auth.signInWithPopup(provider);
+          } catch (e) {
+            setStatus("Redirecionando para o provedor...");
+            await auth.signInWithRedirect(provider);
+          }
+        } catch (e) {
+          setErr("Falha ao iniciar login. Tente novamente.");
+        }
+      }
+      async function doLogout(){
+        try {
+          const auth = firebase.auth();
+          await auth.signOut();
+          try { localStorage.setItem("talentos_noauto","1"); } catch {}
+          setStatus("Sessão encerrada.");
+          setHint("Autologin desativado para esta máquina. Clique em 'Entrar com Microsoft' quando quiser entrar novamente.");
+        } catch(e){}
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const auth = firebase.auth();
+        try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch{}
+
+        // Processa resultado do redirect antes
+        try { await auth.getRedirectResult(); } catch(e){}
+
+        auth.onAuthStateChanged(async (user) => {
+          try{
+            if (!user) {
+              if (!noauto) { doLogin(); setStatus("Abrindo autenticador..."); }
+              else {
+                setStatus("Clique em 'Entrar com Microsoft' para continuar.");
+                if (hasError) setErr("Acesso negado para este domínio. Use sua conta corporativa.");
+                setHint("Se viu looping antes, este login não dispara automaticamente.");
+              }
+              return;
+            }
+            // domínio
+            const allowed = (window.TalentosConfig?.ALLOWED_DOMAINS || ["talentosconsultoria.com.br"]);
+            const domain = String(user.email||"").split("@")[1]||"";
+            if (allowed.length && !allowed.map(d=>String(d).toLowerCase()).includes(domain.toLowerCase())) {
+              setStatus("Domínio não permitido. Saindo...");
+              try { await auth.signOut(); } catch(e){}
+              localStorage.setItem("talentos_noauto","1");
+              location.replace("access-denied.html");
+              return;
+            }
+            // ok
+            const ret = safeReturn(rawReturn);
+            setStatus("Autenticado. Abrindo " + ret + "...");
+            localStorage.removeItem("talentos_noauto");
+            location.replace(ret);
+          }catch(e){
+            setErr("Erro inesperado na autenticação.");
+          }
+        });
+
+        btnLogin?.addEventListener("click", () => { localStorage.removeItem("talentos_noauto"); doLogin(); });
+        btnLogout?.addEventListener("click", doLogout);
+      });
+    })();
+  </script>
+</body>
+</html>
