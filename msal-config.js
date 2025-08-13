@@ -7,7 +7,7 @@
 
   // Observação: o redirectUri PRECISA existir nos "URIs de redirecionamento" do app no Azure.
   // Deixe como index.html por padrão. Ajuste se hospedar em raiz (/).
-  const redirect = window.location.origin + "/index.html";
+  const redirect = "https://dpdoc.talentosconsultoria.com.br/index.html";  // Verifique o domínio e a página
 
   window.MSAL_CONFIG = {
     auth: {
