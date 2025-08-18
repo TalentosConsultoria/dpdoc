@@ -1,126 +1,84 @@
 // auth-guard.js
-// Enforce login on protected pages and provide helpers for login.html
+// Protege páginas exigindo login Microsoft (@talentosconsultoria.com.br)
 
-(function () {
-  function hideUntilReady() {
-    try { document.body.style.visibility = "hidden"; } catch(e) {}
+(function(){
+  if (!window.msal || !window.msal.PublicClientApplication) {
+    console.error("MSAL não carregado. Verifique a tag do CDN msal-browser.");
+    return;
   }
-  function showNow() {
-    try { document.body.style.visibility = "visible"; } catch(e) {}
-  }
-
-  // If MSAL not loaded yet, do nothing
-  if (!window.msal || !window.MSAL_INSTANCE) {
-    document.addEventListener("DOMContentLoaded", function() {
-      if (!window.msal || !window.MSAL_INSTANCE) return;
-      initGuard();
-    });
-  } else {
-    initGuard();
+  if (!window.MSAL_CONFIG) {
+    console.error("MSAL_CONFIG não encontrado. Inclua msal-config.js antes de auth-guard.js");
+    return;
   }
 
-  function isLoginPage() {
-    return /\blogin\.html$/i.test(location.pathname);
-  }
+  const allowedDomain = "talentosconsultoria.com.br";
 
-  function validateAccount(account) {
-    if (!account) return false;
-    const domainOK = (account.username || "").toLowerCase().endsWith("@" + (window.ALLOWED_EMAIL_DOMAIN || "").toLowerCase());
-    const tid = account.idTokenClaims && account.idTokenClaims.tid;
-    const tenantOK = !window.ALLOWED_TENANT_ID || tid === window.ALLOWED_TENANT_ID;
-    return domainOK && tenantOK;
-  }
+  const msalInstance = new msal.PublicClientApplication(window.MSAL_CONFIG);
 
-  async function ensureToken(account) {
-    try {
-      const result = await window.MSAL_INSTANCE.acquireTokenSilent({
-        ...window.TOKEN_REQUEST,
-        account
-      });
-      return result.accessToken;
-    } catch (e) {
-      // Only trigger interactive on login.html to avoid loops
-      if (isLoginPage()) {
-        await window.MSAL_INSTANCE.loginRedirect(window.TOKEN_REQUEST);
-        return null; // redirecting
-      } else {
-        location.replace("login.html");
-        return null;
+  // Seleciona a primeira conta válida no domínio permitido
+  function getAccount() {
+    const accounts = msalInstance.getAllAccounts() || [];
+    for (const acc of accounts) {
+      if (acc.username && acc.username.toLowerCase().endsWith("@" + allowedDomain)) {
+        return acc;
       }
     }
+    return null;
   }
 
-  function initGuard() {
-    const msalInstance = window.MSAL_INSTANCE;
-
-    if (isLoginPage()) {
-      // LOGIN FLOW
-      document.addEventListener("DOMContentLoaded", async function () {
-        hideUntilReady();
-
-        // Complete redirect, if coming back from AAD
-        try { await msalInstance.handleRedirectPromise(); } catch(e) { console.error(e); }
-
-        let account = msalInstance.getActiveAccount();
-        if (!account) {
-          const all = msalInstance.getAllAccounts();
-          if (all.length) msalInstance.setActiveAccount(all[0]);
-          account = msalInstance.getActiveAccount();
-        }
-
-        if (account && validateAccount(account)) {
-          showNow();
-          location.replace("index.html");
-          return;
-        }
-
-        // Start interactive login
-        try {
-          await msalInstance.loginRedirect(window.TOKEN_REQUEST);
-        } catch (e) {
-          console.error("loginRedirect error", e);
-          showNow();
-          const box = document.getElementById("loginError");
-          if (box) box.textContent = "Falha no login. Tente novamente.";
-        }
-      });
-
-      window.startLogin = async function () {
-        try { await msalInstance.loginRedirect(window.TOKEN_REQUEST); } catch (e) { console.error(e); }
-      };
-
-    } else {
-      // PROTECTED PAGES (e.g., index.html)
-      document.addEventListener("DOMContentLoaded", async function () {
-        hideUntilReady();
-
-        try { await msalInstance.handleRedirectPromise(); } catch(e) { console.error(e); }
-
-        let account = msalInstance.getActiveAccount();
-        if (!account) {
-          const all = msalInstance.getAllAccounts();
-          if (all.length) msalInstance.setActiveAccount(all[0]);
-          account = msalInstance.getActiveAccount();
-        }
-
-        if (!account || !validateAccount(account)) {
-          showNow();
-          location.replace("login.html");
-          return;
-        }
-
-        // Optionally acquire a token to confirm cache is valid
-        await ensureToken(account);
-
-        // Expose helpers
-        window.getAuthAccount = () => msalInstance.getActiveAccount();
-        window.getAccessToken = () => ensureToken(msalInstance.getActiveAccount());
-        window.logout = async () => {
-          try { await msalInstance.logoutRedirect(); } catch (e) { console.error(e); }
-        };
-
-        showNow();
-      });
+  function ensureDomainOrSignOut(account) {
+    if (!account) return;
+    if (!account.username.toLowerCase().endsWith("@"+allowedDomain)) {
+      console.warn("Conta fora do domínio permitido:", account.username);
+      msalInstance.logoutRedirect();
     }
   }
+
+  // Trata retorno do redirect (login / logout)
+  msalInstance.handleRedirectPromise()
+    .then((response) => {
+      if (response && response.account) {
+        msalInstance.setActiveAccount(response.account);
+        ensureDomainOrSignOut(response.account);
+      } else {
+        const acc = getAccount();
+        if (acc) msalInstance.setActiveAccount(acc);
+      }
+    })
+    .catch((err) => {
+      console.error("Erro no handleRedirectPromise:", err);
+    })
+    .finally(() => {
+      // Depois de tratar o redirect, se não tiver usuário, faz login
+      const acc = getAccount();
+      if (!acc) {
+        msalInstance.loginRedirect(window.MSAL_LOGIN_REQUEST);
+        return;
+      }
+      msalInstance.setActiveAccount(acc);
+      ensureDomainOrSignOut(acc);
+      // Disponibiliza funções globais úteis
+      window.signOut = function() {
+        msalInstance.logoutRedirect();
+      };
+      window.getAccessToken = async function(scopes) {
+        const req = {
+          account: msalInstance.getActiveAccount(),
+          scopes: scopes && scopes.length ? scopes : ["User.Read"]
+        };
+        try {
+          const result = await msalInstance.acquireTokenSilent(req);
+          return result.accessToken;
+        } catch (e) {
+          if (e instanceof msal.InteractionRequiredAuthError) {
+            const res = await msalInstance.acquireTokenRedirect(req);
+            return res && res.accessToken;
+          } else {
+            console.error("Erro ao obter token:", e);
+            throw e;
+          }
+        }
+      };
+      document.documentElement.classList.add("msal-ready");
+    });
 })();
