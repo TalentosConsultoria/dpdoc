@@ -28,7 +28,107 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Base para os botões pequenos e redondos sobre a miniatura */
+        .pdf-thumbnail-btn {
+            position: absolute;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pdf-thumbnail-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .pdf-thumbnail-btn.delete {
+            top: 0.375rem;
+            right: 0.375rem;
+            background-color: #dc2626;
+        }
+
+        .pdf-thumbnail-btn.delete:hover {
+            background-color: #b91c1c;
+        }
+
+        .pdf-thumbnail-btn.preview {
+            bottom: 0.375rem;
+            right: 0.375rem;
+            background-color: #004aad;
+        }
+
+        .pdf-thumbnail-btn.preview:hover {
+            background-color: #1e40af;
+        }
+
+        .pdf-thumbnail-btn.rotate-left {
+            bottom: 0.375rem;
+            left: 0.375rem;
+            background-color: #4b5563;
+        }
+
+        .pdf-thumbnail-btn.rotate-left:hover {
+            background-color: #374151;
+        }
+
+        .pdf-thumbnail-btn.rotate-right {
+            bottom: 0.375rem;
+            left: 2.75rem;
+            background-color: #4b5563;
+            transform: scaleX(-1);
+        }
+
+        .pdf-thumbnail-btn.rotate-right:hover {
+            background-color: #374151;
+        }
+
+        .pdf-thumbnail {
+            position: relative;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            background-color: white;
+            cursor: grab;
+            transition: border-color 0.2s ease;
+        }
+
+        .pdf-thumbnail:hover {
+            border-color: #004aad;
+        }
+
+        .pdf-thumbnail-overlay {
+            position: absolute;
+            top: 0.375rem;
+            left: 0.375rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #004aad;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 
 <body class="bg-background flex flex-col min-h-screen font-sans">
@@ -107,7 +207,6 @@
         <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
             <p class="text-gray-400 text-sm">&copy; 2025 Talentos Consultoria. Todos os direitos reservados.</p>
             
-            <!-- Seção de Contato com Ícones -->
             <div class="flex items-center gap-6">
                 <a href="https://talentosconsultoria.com.br/" target="_blank" rel="noopener noreferrer" title="Nosso Site" class="text-gray-400 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
@@ -122,12 +221,14 @@
         </div>
     </footer>
 
+    <!-- CDN Scripts com versões compatíveis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
     
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // Configuração do PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         // Elementos do DOM e Estado
         const { PDFDocument, degrees } = PDFLib;
@@ -207,17 +308,22 @@
             const { file, pageIndex } = thumbnailDiv.pdfData;
             const rotation = parseInt(thumbnailDiv.dataset.rotation || '0');
             
-            const arrayBuffer = await file.arrayBuffer();
-            const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            const page = await pdfDocument.getPage(pageIndex + 1);
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdfDocument.getPage(pageIndex + 1);
 
-            const viewport = page.getViewport({ scale: 1.5, rotation });
-            previewCanvas.height = viewport.height;
-            previewCanvas.width = viewport.width;
-            await page.render({ canvasContext: previewCanvas.getContext('2d'), viewport }).promise;
-            
-            previewModal.classList.remove('hidden');
-            verificarBotoesNavegacao(globalIndex);
+                const viewport = page.getViewport({ scale: 1.5, rotation });
+                previewCanvas.height = viewport.height;
+                previewCanvas.width = viewport.width;
+                await page.render({ canvasContext: previewCanvas.getContext('2d'), viewport }).promise;
+                
+                previewModal.classList.remove('hidden');
+                verificarBotoesNavegacao(globalIndex);
+            } catch (error) {
+                console.error('Erro ao mostrar visualização:', error);
+                alert('Erro ao exibir a página do PDF.');
+            }
         }
 
         function navegarPagina(direcao) {
@@ -273,9 +379,15 @@
             document.getElementById('placeholder')?.remove();
 
             for (const file of files) {
+                if (file.type !== 'application/pdf') {
+                    alert(`O arquivo ${file.name} não é um PDF válido.`);
+                    continue;
+                }
+
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
                     for (let i = 1; i <= pdfDocument.numPages; i++) {
                         const page = await pdfDocument.getPage(i);
                         const viewport = page.getViewport({ scale: 0.3 });
@@ -287,7 +399,7 @@
                         
                         const thumbnailDiv = document.createElement('div');
                         thumbnailDiv.className = 'pdf-thumbnail';
-                        thumbnailDiv.dataset.rotation = 0;
+                        thumbnailDiv.dataset.rotation = '0';
                         thumbnailDiv.pdfData = { file, pageIndex: i - 1 };
                         
                         thumbnailDiv.appendChild(canvas);
