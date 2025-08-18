@@ -29,26 +29,36 @@
     function entrar(){ window.TalentosAuth && window.TalentosAuth.beginLogin(); }
   </script>
 
-    <!-- Resilient loader: tenta MSAL local e depois CDN -->
+    
+    <!-- Resilient loader MSAL: local vendor -> jsDelivr -> unpkg -> alcdn (fallback) -->
     <script>
     (function() {
-      function inject(src, onload, onerror){
+      var tried = [];
+      function inject(src, next){
+        tried.push(src);
         var s=document.createElement('script'); s.src=src; s.defer=true;
-        s.onload=onload; s.onerror=onerror; document.head.appendChild(s);
+        s.onload=function(){ /* ok */ };
+        s.onerror=function(){ next && next(); };
+        document.head.appendChild(s);
       }
       function start(){
         if (window.msal && window.msal.PublicClientApplication) return;
-        inject('/vendor/msal-browser.min.js', function(){}, function(){
-          inject('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function(){}, function(){
-            console.error('Falha ao carregar MSAL (local e CDN). Verifique firewall/ad-block/CSP.');
-          });
-        });
+        var chain = [
+          function(n){ inject('/vendor/msal-browser.min.js', n); },
+          function(n){ inject('https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/dist/msal-browser.min.js', n); },
+          function(n){ inject('https://cdn.jsdelivr.net/npm/@azure/msal-browser@latest/dist/msal-browser.min.js', n); },
+          function(n){ inject('https://unpkg.com/@azure/msal-browser@2.38.3/dist/msal-browser.min.js', n); },
+          function(n){ inject('https://unpkg.com/@azure/msal-browser@latest/dist/msal-browser.min.js', n); },
+          function(n){ inject('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', n); },
+          function(n){ console.error('Falha ao carregar MSAL de todas as origens. Tentativas:', tried); }
+        ];
+        (function run(i){ chain[i](function(){ run(i+1); }); })(0);
       }
       if (document.readyState !== 'loading') start();
       else document.addEventListener('DOMContentLoaded', start);
     })();
     </script>
-    
+
 </head>
 <body>
   <div class="card">
