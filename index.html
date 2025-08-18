@@ -1143,11 +1143,17 @@
             }
         }
     </style>
-<meta name="robots" content="noindex,nofollow" />
-<!-- MSAL -->
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" defer></script>
-<script src="msal-config.js" defer></script>
-<script src="auth-guard.js" defer></script>
+<!-- MSAL (Entra ID) para intranet -->
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
+    <script src="./auth.js" defer></script>
+    <script>
+      // Guard invisível: não altera layout
+      document.addEventListener('DOMContentLoaded', ()=>{
+        if (window.TalentosAuth && window.TalentosAuth.requireAuthGuard) {
+          window.TalentosAuth.requireAuthGuard();
+        }
+      });
+    </script>
 </head>
 <body>
     <div class="container">
