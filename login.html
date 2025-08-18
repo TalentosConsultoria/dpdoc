@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entrar • Talentos Intranet</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- MSAL -->
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" defer></script>
+  <script src="msal-config.js" defer></script>
+  <script src="auth-guard.js" defer></script>
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#780000,#5a0000); }
+    .login-card {
+      width: 420px; background:#fff; border-radius:16px; padding:2rem; box-shadow:0 10px 40px rgba(0,0,0,.25);
+    }
+    .login-card h1 { margin:0 0 .5rem 0; color:#2c3e50; }
+    .login-card p { color:#6c757d; margin:0 0 1rem 0; }
+    .btn-login { width:100%; padding:0.75rem 1rem; border-radius:10px; border:0; cursor:pointer; background:#1967d2; color:#fff; font-size:1rem; }
+    .meta { font-size:.85rem; color:#6c757d; margin-top:1rem; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h1>Acessar a Intranet</h1>
+    <p>Use sua conta Microsoft <strong>@talentosconsultoria.com.br</strong>.</p>
+    <button class="btn-login" onclick="startLogin()">Entrar com Microsoft</button>
+    <div id="loginError" class="meta"></div>
+    <div class="meta">Ao continuar você concorda com o uso corporativo e registro de auditoria conforme a LGPD.</div>
+  </div>
+</body>
+</html>
