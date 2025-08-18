@@ -1144,7 +1144,6 @@
         }
     </style>
 <!-- MSAL (Entra ID) para intranet -->
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
     <script src="./auth.js" defer></script>
     <script>
       // Guard invisível: não altera layout
@@ -1154,6 +1153,27 @@
         }
       });
     </script>
+
+    <!-- Resilient loader: tenta MSAL local e depois CDN -->
+    <script>
+    (function() {
+      function inject(src, onload, onerror){
+        var s=document.createElement('script'); s.src=src; s.defer=true;
+        s.onload=onload; s.onerror=onerror; document.head.appendChild(s);
+      }
+      function start(){
+        if (window.msal && window.msal.PublicClientApplication) return;
+        inject('/vendor/msal-browser.min.js', function(){}, function(){
+          inject('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js', function(){}, function(){
+            console.error('Falha ao carregar MSAL (local e CDN). Verifique firewall/ad-block/CSP.');
+          });
+        });
+      }
+      if (document.readyState !== 'loading') start();
+      else document.addEventListener('DOMContentLoaded', start);
+    })();
+    </script>
+    
 </head>
 <body>
     <div class="container">
