@@ -1,4 +1,4 @@
-// auth.js - Sistema de Autenticação
+// auth-guard.js - Sistema de Autenticação Corrigido
 // Este arquivo deve ser incluído em todas as páginas protegidas
 
 class AuthSystem {
@@ -19,7 +19,8 @@ class AuthSystem {
     isLoginPage() {
         return window.location.pathname.includes('login.html') || 
                window.location.pathname === '/login.html' ||
-               window.location.pathname.endsWith('/login');
+               window.location.pathname.endsWith('/login') ||
+               window.location.pathname === '/';
     }
 
     checkAuthentication() {
@@ -146,11 +147,25 @@ class AuthSystem {
         localStorage.removeItem("authToken");
         localStorage.removeItem("userAccount");
         localStorage.removeItem("demoUser");
+        localStorage.removeItem("redirectAfterLogin");
     }
 
     logout() {
         this.clearAuthData();
-        localStorage.removeItem("redirectAfterLogin");
+        
+        // Se existe instância MSAL, faz logout
+        if (window.msalInstance) {
+            try {
+                window.msalInstance.logoutRedirect({
+                    postLogoutRedirectUri: window.location.origin + "/login.html"
+                });
+                return; // O MSAL vai redirecionar
+            } catch (error) {
+                console.error("Erro no logout MSAL:", error);
+            }
+        }
+        
+        // Fallback para logout sem MSAL
         window.location.href = "login.html";
     }
 
@@ -209,9 +224,15 @@ function addLogoutButton() {
     if (header) {
         const nav = header.querySelector('nav');
         if (nav) {
+            // Remove botão existente se houver
+            const existingUserSection = nav.querySelector('.user-section');
+            if (existingUserSection) {
+                existingUserSection.remove();
+            }
+
             // Cria elemento de usuário e logout
             const userSection = document.createElement('div');
-            userSection.className = 'flex items-center gap-4 ml-4';
+            userSection.className = 'user-section flex items-center gap-4 ml-4';
             userSection.innerHTML = `
                 <div class="text-sm text-gray-600 hidden md:block">
                     <span>Olá, <strong>${userInfo.name}</strong></span>
@@ -249,9 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Adiciona botão de logout se estiver autenticado
     if (auth.isUserAuthenticated()) {
-        addLogoutButton();
-        // Inicia verificação periódica
-        auth.startAuthCheck();
+        // Aguarda um pouco para garantir que o DOM esteja completamente carregado
+        setTimeout(() => {
+            addLogoutButton();
+            // Inicia verificação periódica
+            auth.startAuthCheck();
+        }, 100);
     }
 });
 

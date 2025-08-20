@@ -1,35 +1,57 @@
-// msal-config.js
-// Configuração do MSAL para Microsoft Entra ID (Azure AD)
-(function(){
-  // IDs do aplicativo e do tenant a partir do App Registration "AuthTalentosRH"
-  const CLIENT_ID = "aceb5b29-df99-4d90-8533-233407b08a2c";
+// config.js - Configuração MSAL para Microsoft Entra ID
+(function () {
   const TENANT_ID = "cba0be9f-94ad-4a26-b291-fa90af7491ee";
-
-  // Observação: o redirectUri PRECISA existir nos "URIs de redirecionamento" do app no Azure.
-  // Deixe como index.html por padrão. Ajuste se hospedar em raiz (/).
-  const redirect = "https://dpdoc.talentosconsultoria.com.br/index.html";  // Verifique o domínio e a página
+  const CLIENT_ID = "aceb5b29-df99-4d90-8533-233407b08a2c";
+  const BASE_URL = window.location.origin;
+  const REDIRECT_URI = BASE_URL + "/login.html";
 
   window.MSAL_CONFIG = {
     auth: {
-      clientId: CLIENT_ID,  // Corrigido: era uma string sem aspas
+      clientId: CLIENT_ID,
       authority: "https://login.microsoftonline.com/" + TENANT_ID,
-      redirectUri: redirect,
-      postLogoutRedirectUri: redirect,
+      redirectUri: REDIRECT_URI,
+      postLogoutRedirectUri: REDIRECT_URI,
       navigateToLoginRequestUrl: false
     },
     cache: {
       cacheLocation: "localStorage",
-      storeAuthStateInCookie: false
+      storeAuthStateInCookie: true
     },
     system: {
-      loggerOptions: { loggerCallback: function(){} }
+      loggerOptions: { loggerCallback: function () {} }
     }
   };
 
   window.MSAL_LOGIN_REQUEST = {
-    scopes: ["User.Read"],
-    // domain_hint acelera login para o seu domínio corporativo
-    // mude se usar outro domínio principal
-    extraQueryParameters: { domain_hint: "talentosconsultoria.com.br" }
+    scopes: ["User.Read", "openid", "profile"],
+    extraQueryParameters: {
+      domain_hint: "talentosconsultoria.com.br",
+      prompt: "select_account"
+    }
   };
+
+  window.MSAL_SETTINGS = {
+    ENFORCE_DOMAIN: true,
+    ALLOWED_DOMAIN: "talentosconsultoria.com.br",
+    DEBUG_MODE: false
+  };
+
+  // Criação da instância
+  window.msalInstance = new msal.PublicClientApplication(window.MSAL_CONFIG);
+
+  // Processa retorno do login
+  window.msalInstance.handleRedirectPromise().then(async (response) => {
+    if (response && response.account) {
+      const account = response.account;
+      window.msalInstance.setActiveAccount(account);
+      localStorage.setItem("authToken", response.accessToken);
+      localStorage.setItem("userAccount", JSON.stringify(account));
+
+      const redirect = localStorage.getItem("redirectAfterLogin") || "/index.html";
+      localStorage.removeItem("redirectAfterLogin");
+      window.location.href = redirect;
+    }
+  }).catch(error => {
+    console.error("Erro ao processar login:", error);
+  });
 })();
