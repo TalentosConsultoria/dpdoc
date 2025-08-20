@@ -28,28 +28,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="style.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>html[data-auth='checking'] body{visibility:hidden}</style><script>document.documentElement.setAttribute('data-auth','checking');</script><script crossorigin="anonymous" src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script><script src="msal-config.js"></script><script src="config.js"></script><script src="auth-guard.js"></script></head>
-<body class="bg-background flex flex-col min-h-screen font-sans"><script data-inline-auth="1">
-(function(){
-  try{
-    const isLogin = /login\.html$/i.test(location.pathname);
-    if(!isLogin){
-      const acc = localStorage.getItem('userAccount');
-      if(!acc){
-        // preserve original path for after-login redirect
-        localStorage.setItem('redirectAfterLogin', location.pathname + location.search + location.hash);
-        // Try relative login first (works in subpaths), then absolute as fallback
-        const base = location.origin || (location.protocol + '//' + location.host);
-        location.replace(base + '/login.html');
-        return;
-      }
-    }
-    document.documentElement.removeAttribute('data-auth');
-  }catch(e){
-    console.error('inline-auth error', e);
-  }
-})();
-</script>
+<style>html[data-auth='checking'] body{visibility:hidden}</style><script crossorigin="anonymous" src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script><script src="config.js"></script><script src="auth-guard.js"></script></head>
+<body class="bg-background flex flex-col min-h-screen font-sans">
 <header class="bg-white shadow-md p-4 sticky top-0 z-50">
 <div class="container mx-auto flex justify-between items-center">
 <a class="flex items-center space-x-2" href="index.html">
