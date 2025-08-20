@@ -1,57 +1,55 @@
-// config.js - Configuração MSAL para Microsoft Entra ID
+
+// config.js - fluxo MSAL estável (sem loops)
 (function () {
-  const TENANT_ID = "cba0be9f-94ad-4a26-b291-fa90af7491ee";
-  const CLIENT_ID = "aceb5b29-df99-4d90-8533-233407b08a2c";
-  const BASE_URL = window.location.origin;
-  const REDIRECT_URI = BASE_URL + "/login.html";
+  if (!window.msal || !window.MSAL_CONFIG) {
+    console.error("MSAL ou MSAL_CONFIG ausente: verifique a ordem dos scripts.");
+    return;
+  }
 
-  window.MSAL_CONFIG = {
-    auth: {
-      clientId: CLIENT_ID,
-      authority: "https://login.microsoftonline.com/" + TENANT_ID,
-      redirectUri: REDIRECT_URI,
-      postLogoutRedirectUri: REDIRECT_URI,
-      navigateToLoginRequestUrl: false
-    },
-    cache: {
-      cacheLocation: "localStorage",
-      storeAuthStateInCookie: true
-    },
-    system: {
-      loggerOptions: { loggerCallback: function () {} }
+  // Instância única (evita 'state_not_found' por instâncias múltiplas)
+  const msalInstance = new msal.PublicClientApplication(window.MSAL_CONFIG);
+  window.msalInstance = msalInstance;
+
+  // Trata o retorno do redirect assim que a página carrega
+  async function handleRedirect() {
+    try {
+      const result = await msalInstance.handleRedirectPromise();
+      if (result && result.account) {
+        // Login recém concluído
+        msalInstance.setActiveAccount(result.account);
+        localStorage.setItem("userAccount", JSON.stringify(result.account));
+
+        const to = localStorage.getItem("redirectAfterLogin") || "/index.html";
+        localStorage.removeItem("redirectAfterLogin");
+        window.location.replace(to);
+        return;
+      }
+      // Sem resultado no hash: pode já haver sessão
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts && accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+        localStorage.setItem("userAccount", JSON.stringify(accounts[0]));
+      }
+    } catch (e) {
+      // Evita loop: não dispara novo login aqui
+      console.error("MSAL redirect error:", e);
     }
+  }
+  handleRedirect();
+
+  // ---- Helpers globais ----
+  window.loginWithMicrosoft = function () {
+    // Apenas inicia login; retorno é tratado pelo handleRedirect()
+    msalInstance.loginRedirect({ scopes: ["User.Read"] });
   };
 
-  window.MSAL_LOGIN_REQUEST = {
-    scopes: ["User.Read", "openid", "profile"],
-    extraQueryParameters: {
-      domain_hint: "talentosconsultoria.com.br",
-      prompt: "select_account"
+  window.logout = function () {
+    try {
+      localStorage.removeItem("userAccount");
+      localStorage.removeItem("demoUser");
+      msalInstance.logoutRedirect();
+    } catch (e) {
+      console.error("logout error", e);
     }
   };
-
-  window.MSAL_SETTINGS = {
-    ENFORCE_DOMAIN: true,
-    ALLOWED_DOMAIN: "talentosconsultoria.com.br",
-    DEBUG_MODE: false
-  };
-
-  // Criação da instância
-  window.msalInstance = new msal.PublicClientApplication(window.MSAL_CONFIG);
-
-  // Processa retorno do login
-  window.msalInstance.handleRedirectPromise().then(async (response) => {
-    if (response && response.account) {
-      const account = response.account;
-      window.msalInstance.setActiveAccount(account);
-      localStorage.setItem("authToken", response.accessToken);
-      localStorage.setItem("userAccount", JSON.stringify(account));
-
-      const redirect = localStorage.getItem("redirectAfterLogin") || "/index.html";
-      localStorage.removeItem("redirectAfterLogin");
-      window.location.href = redirect;
-    }
-  }).catch(error => {
-    console.error("Erro ao processar login:", error);
-  });
 })();
