@@ -27,8 +27,6 @@
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <!-- Sistema de Autenticação -->
-<script src="config.js"></script>
-<script src="auth-guard.js"></script>
 <style>
         .news-card {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -71,8 +69,28 @@
 </style><style>
     .news-pill { background: #111827; color: #e5e7eb; }
     .news-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.35); }
-    </style></head>
-<body class="bg-background flex flex-col min-h-screen font-sans">
+    </style><style>html[data-auth='checking'] body{visibility:hidden}</style><script>document.documentElement.setAttribute('data-auth','checking');</script><script crossorigin="anonymous" src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script><script src="msal-config.js"></script><script src="config.js"></script><script src="auth-guard.js"></script></head>
+<body class="bg-background flex flex-col min-h-screen font-sans"><script data-inline-auth="1">
+(function(){
+  try{
+    const isLogin = /login\.html$/i.test(location.pathname);
+    if(!isLogin){
+      const acc = localStorage.getItem('userAccount') || (localStorage.getItem('demoUser')==='true' ? 'demo' : null);
+      if(!acc){
+        // preserve original path for after-login redirect
+        localStorage.setItem('redirectAfterLogin', location.pathname + location.search + location.hash);
+        // Try relative login first (works in subpaths), then absolute as fallback
+        const base = location.origin || (location.protocol + '//' + location.host);
+        location.replace(base + '/login.html');
+        return;
+      }
+    }
+    document.documentElement.removeAttribute('data-auth');
+  }catch(e){
+    console.error('inline-auth error', e);
+  }
+})();
+</script>
 <header class="bg-white shadow-md p-4 sticky top-0 z-50">
 <div class="container mx-auto flex justify-between items-center">
 <a class="flex items-center space-x-3" href="index.html">
@@ -131,15 +149,39 @@
   const data = await fetchJson(api);
 
   strip.innerHTML = "";
+  
+  // Helpers de imagem robustos
+
+  function normHttps(u){
+    if(!u) return "";
+    try{
+      u = u.replace(/&amp;/g,"&").trim();
+      if(u.startsWith("//")) return "https:"+u;
+      if(u.startsWith("http://")) return "https://" + u.slice(7);
+      return u;
+    }catch(e){ return u; }
+  }
+  function extractImgFromContent(html){
+    if(!html) return "";
+    const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    return m ? m[1] : "";
+  }
+
   (data.items || []).slice(0, 18).forEach(item => {
     const a = document.createElement("a");
     a.href = item.link || "#";
     a.target = "_blank";
     a.rel = "noopener";
     a.className = "news-pill min-w-[220px] w-[220px] rounded-xl shadow transition p-2 inline-flex flex-col";
+
+    let imgRaw = (item.thumbnail||"") 
+              || (item.enclosure && (item.enclosure.link || item.enclosure.url)) 
+              || extractImgFromContent(item.content || item.description || "");
+    let imgSrc = normHttps(imgRaw) || "https://via.placeholder.com/220x120?text=Not%C3%ADcia";
+
     a.innerHTML = `
       <div class="w-full h-[120px] bg-gray-800 rounded overflow-hidden">
-        <img src="${(item.thumbnail||'').trim() || 'https://via.placeholder.com/220x120?text=Noticia'}" class="w-full h-full object-cover" loading="lazy" />
+        <img src="${imgSrc}" onerror="this.onerror=null;this.src='https://via.placeholder.com/220x120?text=Not%C3%ADcia';" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer"/>
       </div>
       <div class="mt-2 text-sm font-semibold line-clamp-2" style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;">
         ${item.title || ""}
@@ -147,6 +189,7 @@
     `;
     strip.appendChild(a);
   });
+
 
   // --- Auto-scroll com requestAnimationFrame
   let paused = false;
@@ -188,7 +231,6 @@
   .no-scrollbar::-webkit-scrollbar{display:none}
   .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 </style>
-
 <style>
   .no-scrollbar::-webkit-scrollbar{display:none}
   .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
@@ -305,7 +347,6 @@ async function fetchWithProxy(url){
 </div>
 </div>
 <div class="grid grid-cols-5 gap-2 text-center" id="wx-daily"></div>
-
 <script>
 // Open-Meteo Rio de Janeiro com painel de 15 dias (toggle)
 async function loadWeather(){
