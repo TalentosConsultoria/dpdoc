@@ -213,56 +213,69 @@ class AuthSystem {
 }
 
 // Função para adicionar botão de logout nas páginas
+
 function addLogoutButton() {
     const auth = new AuthSystem();
     const userInfo = auth.getUserInfo();
-    
     if (!userInfo) return;
 
-    // Procura o header para adicionar o botão de logout
-    const header = document.querySelector('header .container');
-    if (header) {
-        const nav = header.querySelector('nav');
-        if (nav) {
-            // Remove botão existente se houver
-            const existingUserSection = nav.querySelector('.user-section');
-            if (existingUserSection) {
-                existingUserSection.remove();
-            }
+    // Host mais robusto: tenta lugares comuns do seu layout
+    const host = document.querySelector("header nav")
+             || document.querySelector("header .container nav")
+             || document.querySelector("header .container")
+             || document.querySelector("header")
+             || document.querySelector("nav")
+             || document.body;
 
-            // Cria elemento de usuário e logout
-            const userSection = document.createElement('div');
-            userSection.className = 'user-section flex items-center gap-4 ml-4';
-            userSection.innerHTML = `
-                <div class="text-sm text-gray-600 hidden md:block">
-                    <span>Olá, <strong>${userInfo.name}</strong></span>
-                    <div class="text-xs text-gray-500">${userInfo.email}</div>
-                </div>
-                <button id="logout-btn" class="
-                    bg-red-600 hover:bg-red-700 
-                    text-white font-medium 
-                    px-3 py-2 rounded-lg 
-                    transition-colors duration-200
-                    text-sm
-                " title="Sair">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                    </svg>
-                    <span class="hidden sm:inline">Sair</span>
-                </button>
-            `;
-            
-            nav.appendChild(userSection);
-            
-            // Adiciona evento de logout
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                if (confirm('Deseja realmente sair?')) {
-                    auth.logout();
-                }
-            });
+    // Evita duplicar
+    const existing = document.getElementById("tc-userbox");
+    if (existing && existing.parentElement) existing.remove();
+
+    // Cria elemento
+    const wrap = document.createElement("div");
+    wrap.id = "tc-userbox";
+    wrap.className = "user-section flex items-center gap-4 ml-4";
+
+    const info = document.createElement("div");
+    info.className = "text-sm text-gray-600 hidden md:block";
+    info.innerHTML = `<span>Olá, <strong>${userInfo.name || "Usuário"}</strong></span>
+                      <div class="text-xs text-gray-500">${userInfo.email || ""}</div>`;
+
+    const btn = document.createElement("button");
+    btn.id = "logout-btn";
+    btn.type = "button";
+    btn.className = "bg-red-600 hover:bg-red-700 text-white font-medium px-3 py-2 rounded-lg transition-colors duration-200 text-sm";
+    btn.innerHTML = `<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h-1V5a3 3 0 00-3-3H6a3 3 0 00-3 3v14a3 3 0 003 3h3a3 3 0 003-3v-2h1m0 0l4 4m-4-4l4-4"/>
+      </svg><span class="hidden sm:inline">Sair</span>`;
+
+    btn.addEventListener("click", async () => {
+        try {
+            if (localStorage.getItem("demoUser") === "true") {
+                localStorage.removeItem("demoUser");
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("userAccount");
+                location.replace("login.html");
+                return;
+            }
+            // Preferir helper se existir
+            if (window.msAuth && typeof window.msAuth.signOut === "function") {
+                await window.msAuth.signOut();
+                return;
+            }
+            // Fallback para método do AuthSystem
+            auth.logout();
+        } catch (e) {
+            console.error("Erro ao sair:", e);
+            location.replace("login.html");
         }
-    }
+    });
+
+    wrap.appendChild(info);
+    wrap.appendChild(btn);
+    host.appendChild(wrap);
 }
+
 
 // Inicializa o sistema de autenticação quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
