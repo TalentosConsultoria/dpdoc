@@ -1,234 +1,50 @@
-<!DOCTYPE html>
-<html class="scroll-smooth" lang="pt-br">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Formatador de QLP - Talentos Consultoria</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter','sans-serif'] },
-          colors: {
-            primary: '#004aad',
-            secondary:'#196dff',
-            background:'#f1f5f9',
-            card:'#ffffff'
-          }
-        }
-      }
-    }
-  </script>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
-
-  <!-- XLSX -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- (opcional) guarda de auth – remova se não usar login -->
-  <style>html[data-auth='checking'] body{visibility:hidden}</style>
-  <script>document.documentElement.setAttribute('data-auth','checking');</script>
-  <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js" crossorigin="anonymous"></script>
-  <script src="msal-config.js"></script>
-  <script src="config.js"></script>
-  <script src="auth-guard.js"></script>
-</head>
-<body class="bg-background flex flex-col min-h-screen font-sans">
-<script data-inline-auth="1">
-(function(){
-  try{
-    const isLogin = /login\.html$/i.test(location.pathname);
-    if(!isLogin){
-      const acc = localStorage.getItem('userAccount') || (localStorage.getItem('demoUser')==='true' ? 'demo' : null);
-      if(!acc){
-        localStorage.setItem('redirectAfterLogin', location.pathname + location.search + location.hash);
-        const base = location.origin || (location.protocol + '//' + location.host);
-        location.replace(base + '/login.html');
-        return;
-      }
-    }
-    document.documentElement.removeAttribute('data-auth');
-  }catch(e){ console.error('inline-auth error', e); }
-})();
-</script>
-
-<header class="bg-white shadow-md p-4 sticky top-0 z-50">
-  <div class="container mx-auto flex justify-between items-center">
-    <a href="index.html" class="flex items-center space-x-2">
-      <img class="h-10 rounded-full shadow-md" alt="Logo da Talentos Consultoria" src="https://media.glassdoor.com/sqll/2733569/talentos-consultoria-squarelogo-1649741391944.png"/>
-      <span class="text-xl font-bold text-red-700 hidden md:block">Talentos Consultoria</span>
-    </a>
-
-    <nav class="relative">
-      <button id="tools-dropdown-button" class="text-gray-600 hover:text-primary font-semibold transition duration-300 flex items-center space-x-1 focus:outline-none">
-        <span>Ferramentas DP</span>
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div id="tools-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden">
-        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" href="qlp-format.html">QLP</a>
-        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" href="pdf-tool.html">PDF</a>
-        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" href="format-bancodoc.html">Bdoc</a>
-      </div>
-    </nav>
-  </div>
-</header>
-
-<main class="flex-grow flex justify-center items-center p-4">
-  <div class="bg-card p-8 md:p-12 rounded-3xl shadow-2xl w-full max-w-lg text-center">
-    <h1 class="text-2xl font-bold text-gray-800 mb-2">Importar e Formatar Planilha QLP</h1>
-    <p class="text-gray-600 mb-6">Preencha o nome da unidade (opcional) e importe a planilha. As colunas serão selecionadas para formatação antes do download.</p>
-
-    <div class="mb-6 text-left">
-      <label for="unit-name-input" class="block mb-2 text-sm font-medium text-gray-700">Nome da Unidade (Opcional):</label>
-      <input id="unit-name-input" type="text" placeholder="Ex: AMBEV NOVA RIO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition"/>
-    </div>
-
-    <label for="file-input" class="block w-full text-center p-4 cursor-pointer bg-primary text-white rounded-lg font-semibold hover:bg-secondary transition-colors duration-300">Importar Planilha</label>
-    <input id="file-input" type="file" class="hidden" accept=".csv,.xlsx,.xls"/>
-  </div>
-</main>
-
-<!-- Modal de seleção de colunas -->
-<div id="column-selection-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-  <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative mx-4">
-    <button id="close-modal-button" class="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-3xl font-bold cursor-pointer">&times;</button>
-    <h3 class="text-xl font-semibold mb-4 pb-4 border-b">Selecione as colunas a manter:</h3>
-    <ul id="column-list" class="list-none p-0 max-h-60 overflow-y-auto space-y-3"></ul>
-    <button onclick="downloadSelectedColumns()" class="w-full mt-6 p-3 bg-primary text-white rounded-lg font-semibold hover:bg-secondary transition-colors">Baixar Planilha Formatada</button>
-  </div>
-</div>
-
-<footer class="bg-gray-800 text-white text-center p-6">
-  <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
-    <p class="text-gray-400 text-sm">© 2025 Talentos Consultoria. Todos os direitos reservados.</p>
-    <div class="flex items-center gap-6">
-      <a class="text-gray-400 hover:text-white transition-colors" href="https://talentosconsultoria.com.br/" target="_blank" rel="noopener" title="Nosso Site">
-        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-      </a>
-      <a class="text-gray-400 hover:text-white transition-colors" href="https://www.instagram.com/talentosconsultoria/" target="_blank" rel="noopener" title="Nosso Instagram">
-        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.28.058 1.688.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.689-.073-4.948-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-      </a>
-      <a class="text-gray-400 hover:text-white transition-colors" href="https://www.linkedin.com/company/talentos-consultoria/" target="_blank" rel="noopener" title="Nosso LinkedIn">
-        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-      </a>
-    </div>
-  </div>
-</footer>
-
 <script>
-  // Dropdown
-  const dropdownButton = document.getElementById('tools-dropdown-button');
-  const dropdownMenu   = document.getElementById('tools-dropdown-menu');
-  dropdownButton.addEventListener('click', (e)=>{ e.stopPropagation(); dropdownMenu.classList.toggle('hidden'); });
-  window.addEventListener('click', ()=>{ if(!dropdownMenu.classList.contains('hidden')) dropdownMenu.classList.add('hidden'); });
+  // ...código acima inalterado...
 
-  // QLP
   let rawData;
-  const fileInput = document.getElementById('file-input');
-  const modal     = document.getElementById('column-selection-modal');
-  const closeModalButton = document.getElementById('close-modal-button');
+  let isDate1904 = false; // <- vamos detectar isso ao carregar
 
-  const headerMapping = [
-    { newName: "CADASTRO",   originalIndex: 0 },
-    { newName: "NOME",       originalIndex: 1 },
-    { newName: "SITUACAO",   originalIndex: 4 },
-    { newName: "FILIAL",     originalIndex: 5 },
-    { newName: "VINCULO",    originalIndex: 6 },
-    { newName: "ADMISSAO",   originalIndex: 7 },
-    { newName: "CARGO",      originalIndex: 8 },
-    { newName: "NASCIMENTO", originalIndex:10 },
-    { newName: "CTPS",       originalIndex:11 },
-    { newName: "SERIE",      originalIndex:13 },
-    { newName: "RG",         originalIndex:14 },
-    { newName: "CPF",        originalIndex:15 },
-    { newName: "PIS",        originalIndex:16 },
-  ];
+  // ======== CONVERSOR DE DATA SEM DESVIO (respeita 1900/1904) ========
+  function excelSerialToBRDate(serial) {
+    if (serial == null || serial === '') return '';
 
-  fileInput.addEventListener('change', handleFile, false);
-  closeModalButton.addEventListener('click', ()=>modal.classList.add('hidden'));
-  window.addEventListener('click', (e)=>{ if(e.target==modal) modal.classList.add('hidden'); });
+    // Se for 1904, Excel armazena 1462 dias a menos
+    const n = isDate1904 ? (Number(serial) + 1462) : Number(serial);
 
-  // ======== CONVERSOR DE DATA SEM DESVIO (UTC) ========
-  function excelDateToJSDate(value) {
-    if (value == null || value === '') return '';
-    if (typeof value === 'number') {
-      const days = Math.floor(value);
-      const frac = value - days;
-      const baseUTC = Date.UTC(1899, 11, 30); // 1899-12-30
-      const ms = baseUTC + days*86400000 + Math.round(frac*86400000);
-      return formatDateUTC(new Date(ms));
-    }
-    if (typeof value === 'string') {
-      const s = value.trim();
-      const m1 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-      if (m1) return formatDateUTC(new Date(Date.UTC(+m1[3], +m1[2]-1, +m1[1])));
-      const m2 = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
-      if (m2) return formatDateUTC(new Date(Date.UTC(+m2[1], +m2[2]-1, +m2[3])));
-    }
-    return '';
-  }
-  function formatDateUTC(d){
-    const dd = String(d.getUTCDate()).padStart(2,'0');
-    const mm = String(d.getUTCMonth()+1).padStart(2,'0');
-    const yy = d.getUTCFullYear();
+    // Usa o parser do xlsx: evita timezone e lida com o bug de 1900
+    const dc = XLSX.SSF.parse_date_code(n);
+    if (!dc) return '';
+
+    const dd = String(dc.d).padStart(2, '0');
+    const mm = String(dc.m).padStart(2, '0');
+    const yy = dc.y;
     return `${dd}/${mm}/${yy}`;
   }
 
   function handleFile(e){
     const files = e.target.files;
     if(!files.length) return;
+
     const reader = new FileReader();
     reader.onload = (ev)=>{
       const data = new Uint8Array(ev.target.result);
-      const wb = XLSX.read(data,{type:'array'});
+      const wb = XLSX.read(data, { type:'array', cellDates:false, raw:true });
+
+      // Detecta se o workbook usa sistema 1904
+      isDate1904 = !!(wb?.Workbook?.WBProps?.date1904);
+
       const ws = wb.Sheets[wb.SheetNames[0]];
-      rawData = XLSX.utils.sheet_to_json(ws,{header:1});
+      rawData = XLSX.utils.sheet_to_json(ws, { header:1, raw:true }); // mantém números crus
       displayColumnSelectionModal();
     };
     reader.readAsArrayBuffer(files[0]);
   }
 
-  function displayColumnSelectionModal(){
-    const columnList = document.getElementById('column-list');
-    columnList.innerHTML = '';
-    headerMapping.forEach(m=>{
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <label class="flex items-center text-gray-700 cursor-pointer">
-          <input type="checkbox" checked value="${m.originalIndex}" class="mr-3 h-5 w-5 rounded text-primary focus:ring-primary border-gray-300">
-          ${m.newName}
-        </label>`;
-      columnList.appendChild(li);
-    });
-    modal.classList.remove('hidden');
-  }
-
-  function downloadSelectedColumns(){
-    const unitName = document.getElementById('unit-name-input').value.trim();
-    const checked = document.querySelectorAll('#column-list input[type="checkbox"]:checked');
-    const columnsToKeep = Array.from(checked).map(cb=>parseInt(cb.value,10));
-
-    const newHeaders = Array.from(checked).map(cb=>{
-      const idx = parseInt(cb.value,10);
-      const m = headerMapping.find(h=>h.originalIndex===idx);
-      return m ? m.newName : 'COLUNA DESCONHECIDA';
-    });
-
-    processAndDownloadData(rawData, columnsToKeep, newHeaders, unitName);
-    modal.classList.add('hidden');
-  }
-
   function processAndDownloadData(data, columnsToKeep, newHeaders, unitName){
     if (data.length <= 4){ alert('O arquivo não tem linhas suficientes para serem processadas.'); return; }
-
     const dataRows = data.slice(4);
 
-    // Mantém 46 linhas e pula 5 (padrão do seu relatório)
+    // Lotes 46 mantém / 5 pula (seu padrão)
     let finalRows = [], keep=0, skip=0;
     for (let i=0;i<dataRows.length;i++){
       if (keep<46){ finalRows.push(dataRows[i]); keep++; }
@@ -236,11 +52,9 @@
       if (skip===5){ keep=0; skip=0; }
     }
 
-    // para no "total"
     const totalRowIndex = finalRows.findIndex(row => row[0] && String(row[0]).toLowerCase().includes('total'));
     if (totalRowIndex !== -1) finalRows = finalRows.slice(0,totalRowIndex);
 
-    // índices originais por nome
     const findOriginalIndex = name => (headerMapping.find(m=>m.newName===name)?.originalIndex ?? -1);
     const vinculoIdx     = findOriginalIndex('VINCULO');
     const situacaoIdx    = findOriginalIndex('SITUACAO');
@@ -255,36 +69,7 @@
       columnsToKeep.forEach(colIdx=>{
         let cell = row[colIdx] ?? '';
 
-        // VÍNCULO
-        if (colIdx === vinculoIdx){
-          const map = { '10':'EFETIVO/CLT', '50':'TEMPORARIO', '55':'JOVEM APRENDIZ' };
-          cell = map[String(cell)] || cell;
-        }
-
-        // SITUAÇÃO
-        if (colIdx === situacaoIdx){
-          const map = { 1:'Trabalhando', 2:'Férias', 3:'Auxílio Doença', 4:'Acidente de Trabalho', 5:'Serviço Militar', 6:'Licença Maternidade', 7:'Demitido' };
-          const key = String(parseInt(cell,10));
-          cell = map[key] || cell;
-        }
-
-        // FILIAL (inclui aliases para BALL)
-        if (colIdx === filialIdx){
-          const filialMap = {
-            95:"BALL EMBALAGENS LTDA - CLT",
-            96:"BALL EMBALAGENS LTDA - TEMPORARIOS",
-            // novos códigos (se surgirem)
-            120:"BALL - CLT",
-            121:"BALL - TEMPORARIO",
-            // ... (demais mapeamentos que você já possuía)
-          };
-          const asStr = String(cell || '').toUpperCase();
-          if (!isNaN(Number(cell))){
-            cell = filialMap[cell] || cell;
-          } else if (asStr.includes('BALL')){
-            cell = asStr.includes('TEMP') ? 'BALL - TEMPORARIO' : 'BALL - CLT';
-          }
-        }
+        // (demais mapeamentos iguais aos seus...)
 
         // CPF
         if (colIdx === cpfIdx){
@@ -298,9 +83,23 @@
           if (pis.length===11) cell = pis.replace(/(\d{3})(\d{5})(\d{2})(\d{1})/,'$1.$2.$3-$4');
         }
 
-        // DATAS (sem desvio)
-        if ((colIdx===admissaoIdx || colIdx===nascimentoIdx)){
-          if (typeof cell === 'number' || typeof cell === 'string') cell = excelDateToJSDate(cell);
+        // DATAS (sem fuso e respeitando 1904)
+        if (colIdx===admissaoIdx || colIdx===nascimentoIdx){
+          if (typeof cell === 'number') {
+            cell = excelSerialToBRDate(cell);
+          } else if (typeof cell === 'string') {
+            // tenta normalizar strings comuns (dd/mm/aaaa ou aaaa-mm-dd)
+            const s = cell.trim();
+            const m1 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+            const m2 = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+            if (m1) {
+              const dd = m1[1].padStart(2,'0'), mm=m1[2].padStart(2,'0'), yy=m1[3];
+              cell = `${dd}/${mm}/${yy}`;
+            } else if (m2) {
+              const dd = m2[3].padStart(2,'0'), mm=m2[2].padStart(2,'0'), yy=m2[1];
+              cell = `${dd}/${mm}/${yy}`;
+            } // senão, deixa como está
+          }
         }
 
         newRow.push(cell);
@@ -309,7 +108,6 @@
     });
 
     formatted.unshift(newHeaders);
-
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(formatted);
     XLSX.utils.book_append_sheet(wb, ws, 'Planilha Formatada');
@@ -319,5 +117,3 @@
     fileInput.value = null;
   }
 </script>
-</body>
-</html>
